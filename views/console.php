@@ -62,7 +62,7 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                 }
                 $estimatedRefund = round($unusedFullHours * $rate, 2);
 
-                $publicHost = $_ENV['ALLOCATOR_PUBLIC_HOST'] ?? getenv('ALLOCATOR_PUBLIC_HOST') ?: 'allocator.vku.udn.vn';
+                $publicHost = $_ENV['ALLOCATOR_PUBLIC_HOST'] ?? getenv('ALLOCATOR_PUBLIC_HOST') ?: 'allocator.vordenker.work';
                 $sshCommand = sprintf(
                     'ssh -p %d %s@%s',
                     (int) $lease['assigned_port'],
