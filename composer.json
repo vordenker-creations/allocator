@@ -1,0 +1,18 @@
+{
+    "name": "vku/allocator",
+    "description": "VKU Compute & Hardware Resource Lease Allocator",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "VKU\\Allocator\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}

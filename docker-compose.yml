@@ -1,0 +1,45 @@
+services:
+  db:
+    image: mysql:8.4
+    container_name: vku_allocator_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: vku_root_secret
+      MYSQL_DATABASE: vku_allocator
+      MYSQL_USER: vku_user
+      MYSQL_PASSWORD: vku_password
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "vku_user", "-pvku_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vku_allocator_app
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: vku_allocator
+      DB_USER: vku_user
+      DB_PASS: vku_password
+      APP_TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
