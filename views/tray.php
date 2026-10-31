@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+use VKU\Allocator\Service\I18n;
+
 require __DIR__ . '/layout_top.php';
 
 $effectiveRole = $currentUserRole ?? \VKU\Allocator\Domain\Enum\UserRole::Student;
@@ -14,16 +16,17 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Job Spec Staging Tray</h1>
+        <h1 class="page-title"><?= e(I18n::get('tray_title', $currentLang)) ?></h1>
         <p class="page-subtitle">
-            Configure runtime environment, job start time (24-Hour Reservation Horizon), per-node duration, and commit an atomic reservation.
+            <!-- 24-Hour Reservation Horizon -->
+            <?= e(I18n::get('tray_subtitle', $currentLang)) ?>
         </p>
     </div>
     <div style="display:flex;gap:0.5rem;">
-        <a href="/" class="btn btn-outline">&larr; Add More Nodes</a>
+        <a href="/" class="btn btn-outline"><?= e(I18n::get('tray_add_more', $currentLang)) ?></a>
         <?php if ($hydratedTray['node_count'] > 0): ?>
             <form method="POST" action="/tray/clear" style="display:inline;">
-                <button type="submit" class="btn btn-outline">Clear Tray</button>
+                <button type="submit" class="btn btn-outline"><?= e(I18n::get('tray_clear', $currentLang)) ?></button>
             </form>
         <?php endif; ?>
     </div>
@@ -31,11 +34,11 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
 
 <?php if ($hydratedTray['node_count'] === 0): ?>
     <section class="panel" style="text-align:center;padding:3rem 1.5rem;">
-        <h2 class="mono" style="margin-bottom:0.65rem;">Your Job Spec Staging Tray is Empty</h2>
+        <h2 class="mono" style="margin-bottom:0.65rem;"><?= e(I18n::get('tray_empty_title', $currentLang)) ?></h2>
         <p style="color:var(--fg-secondary);margin-bottom:1.25rem;">
-            Select one or more online hardware nodes from the Node Matrix to configure a compute job.
+            <?= e(I18n::get('tray_empty_desc', $currentLang)) ?>
         </p>
-        <a href="/" class="btn">Browse Node Matrix</a>
+        <a href="/" class="btn"><?= e(I18n::get('tray_browse_btn', $currentLang)) ?></a>
     </section>
 <?php else: ?>
     <div class="split-grid">
@@ -43,19 +46,19 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
             <form id="job-spec-form" method="POST" action="/provision">
                 <section class="panel">
                     <div class="panel-title">
-                        <span>1. Staged Compute Nodes (<?= (int) $hydratedTray['node_count'] ?> / <?= $maxNodesPerJob ?> Max for <?= e($effectiveRole->value) ?>)</span>
+                        <span><?= e(I18n::format('tray_sec1_title', $currentLang, [(int) $hydratedTray['node_count'], $maxNodesPerJob, I18n::translateRole($effectiveRole->value, $currentLang)])) ?></span>
                     </div>
 
                     <div class="table-wrap" style="margin-bottom:1rem;">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Node Hostname</th>
-                                    <th>Tier &amp; Cap</th>
-                                    <th>Rate</th>
-                                    <th>Hours</th>
-                                    <th>Window End</th>
-                                    <th>Subtotal</th>
+                                    <th><?= e(I18n::get('th_node_hostname', $currentLang)) ?></th>
+                                    <th><?= e(I18n::get('th_tier_cap', $currentLang)) ?></th>
+                                    <th><?= e(I18n::get('th_rate', $currentLang)) ?></th>
+                                    <th><?= e(I18n::get('th_hours', $currentLang)) ?></th>
+                                    <th><?= e(I18n::get('th_window_end', $currentLang)) ?></th>
+                                    <th><?= e(I18n::get('th_subtotal', $currentLang)) ?></th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -66,13 +69,13 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                                         <td class="mono">
                                             <strong><?= e($item['hostname']) ?></strong><br>
                                             <span style="font-size:0.75rem;color:var(--fg-muted);">
-                                                <?= e($item['gpu_model'] ?? ($item['cpu_cores'] . '-Core CPU')) ?>
+                                                <?= e($item['gpu_model'] ?? I18n::format('tray_core_cpu', $currentLang, [(int) $item['cpu_cores']])) ?>
                                             </span>
                                         </td>
                                         <td class="mono">
-                                            <?= e($item['tier_name']) ?><br>
+                                            <?= e(I18n::translateTierName('', (string) $item['tier_name'], $currentLang)) ?><br>
                                             <span style="font-size:0.74rem;color:var(--fg-muted);">
-                                                Max <?= (int) $item['max_allocation_hours'] ?>h
+                                                <?= e(I18n::format('filter_max_h', $currentLang, [(int) $item['max_allocation_hours']])) ?>
                                             </span>
                                         </td>
                                         <td class="mono"><?= number_format((float) $item['credits_per_hour'], 2) ?> CR/h</td>
@@ -100,7 +103,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                                                 type="submit"
                                                 form="remove-node-<?= $nid ?>"
                                                 class="btn btn-outline btn-sm"
-                                                title="Remove node from tray"
+                                                title="<?= e(I18n::get('tray_remove_title', $currentLang)) ?>"
                                             >
                                                 &times;
                                             </button>
@@ -113,19 +116,19 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
 
                     <div style="display:flex;justify-content:flex-end;">
                         <button type="submit" formaction="/tray/update" class="btn btn-outline btn-sm">
-                            Recalculate &amp; Save Tray Changes
+                            <?= e(I18n::get('tray_recalc_btn', $currentLang)) ?>
                         </button>
                     </div>
                 </section>
 
                 <section class="panel">
                     <div class="panel-title">
-                        <span>2. Runtime Environment &amp; Scheduling Parameters</span>
+                        <span><?= e(I18n::get('tray_sec2_title', $currentLang)) ?></span>
                     </div>
 
                     <div class="filter-grid" style="margin-bottom:1rem;">
                         <div class="form-group">
-                            <label class="form-label" for="project_name">Job / Project Label</label>
+                            <label class="form-label" for="project_name"><?= e(I18n::get('tray_project_label', $currentLang)) ?></label>
                             <input
                                 type="text"
                                 id="project_name"
@@ -139,7 +142,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="start_time">Job-Wide Start Time (24-Hour Reservation Horizon)</label>
+                            <label class="form-label" for="start_time"><?= e(I18n::get('tray_start_label', $currentLang)) ?></label>
                             <input
                                 type="datetime-local"
                                 id="start_time"
@@ -154,21 +157,21 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                     </div>
 
                     <div class="form-group" style="margin-bottom:1rem;">
-                        <label class="form-label" for="docker_image">Container / Runtime Environment Preset</label>
+                        <label class="form-label" for="docker_image"><?= e(I18n::get('tray_preset_label', $currentLang)) ?></label>
                         <select id="docker_image" name="docker_image" class="form-control">
                             <?php foreach ($presets as $preset): ?>
                                 <option
                                     value="<?= e($preset->value) ?>"
                                     <?= $hydratedTray['docker_image'] === $preset->value ? 'selected' : '' ?>
                                 >
-                                    <?= e($preset->shortLabel()) ?> &mdash; [<?= e($preset->value) ?>]
+                                    <?= e($preset->shortLabel($currentLang)) ?> &mdash; [<?= e($preset->value) ?>]
                                 </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
 
                     <div class="form-group" style="margin-bottom:1rem;">
-                        <label class="form-label" for="startup_script">Optional Startup Script / Job Notes</label>
+                        <label class="form-label" for="startup_script"><?= e(I18n::get('tray_script_label', $currentLang)) ?></label>
                         <textarea
                             id="startup_script"
                             name="startup_script"
@@ -179,7 +182,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
 
                     <div class="form-group">
                         <label class="form-label" for="ssh_public_key">
-                            SSH Public Key (ssh-ed25519 / ssh-rsa / ecdsa) &mdash; Required for Node Provisioning
+                            <?= e(I18n::get('tray_ssh_label', $currentLang)) ?>
                         </label>
                         <input
                             type="text"
@@ -191,7 +194,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                             placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... student@vku.udn.vn"
                         >
                         <span class="mono" style="font-size:0.74rem;color:var(--fg-muted);">
-                            Validated via strict OpenSSH regex prior to atomic SQL commit.
+                            <?= e(I18n::get('tray_ssh_hint', $currentLang)) ?>
                         </span>
                     </div>
                 </section>
@@ -206,33 +209,33 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
 
         <aside class="panel">
             <div class="panel-title">
-                <span>3. Transactional Cost Summary</span>
+                <span><?= e(I18n::get('tray_sec3_title', $currentLang)) ?></span>
             </div>
 
             <div class="summary-row">
-                <span>Staged Nodes</span>
+                <span><?= e(I18n::get('tray_sum_nodes', $currentLang)) ?></span>
                 <strong><?= (int) $hydratedTray['node_count'] ?> / <?= $maxNodesPerJob ?></strong>
             </div>
             <div class="summary-row">
-                <span>Job Start Window</span>
+                <span><?= e(I18n::get('tray_sum_start', $currentLang)) ?></span>
                 <strong><?= e($hydratedTray['start_time_dt']->format('Y-m-d H:i')) ?></strong>
             </div>
             <div class="summary-row">
-                <span>Booking Horizon</span>
-                <strong>Valid (24-Hour Horizon)</strong>
+                <span><?= e(I18n::get('tray_sum_horizon', $currentLang)) ?></span>
+                <strong><?= e(I18n::get('tray_sum_horizon_valid', $currentLang)) ?></strong>
             </div>
 
             <?php if ($currentUser !== null): ?>
                 <div class="summary-row">
-                    <span>Current Balance</span>
+                    <span><?= e(I18n::get('tray_sum_balance', $currentLang)) ?></span>
                     <strong><?= number_format($userBalance, 2) ?> CR</strong>
                 </div>
                 <div class="summary-row total">
-                    <span>Total Credit Burn</span>
+                    <span><?= e(I18n::get('tray_sum_burn', $currentLang)) ?></span>
                     <span id="grand-total-credits"><?= number_format($totalCost, 2) ?> CR</span>
                 </div>
                 <div class="summary-row" style="border-top:1px solid var(--border-color);margin-top:0.5rem;">
-                    <span>Projected Balance After Commit</span>
+                    <span><?= e(I18n::get('tray_sum_projected', $currentLang)) ?></span>
                     <strong style="color:<?= $remainingBalance < 0 ? 'var(--status-maint-fg)' : 'var(--status-online-fg)' ?>;">
                         <?= number_format($remainingBalance, 2) ?> CR
                     </strong>
@@ -241,7 +244,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                 <?php if ($maxConcurrentLeases !== null && $activeSystemLeaseCount >= $maxConcurrentLeases): ?>
                     <div class="flash flash-error" style="margin-top:1rem;margin-bottom:0;">
                         <span>
-                            Hoarding limit: Your <?= e($effectiveRole->value) ?> account already has <?= (int) $activeSystemLeaseCount ?> active/scheduled lease. Terminate it in the Console first.
+                            <?= e(I18n::format('tray_hoarding_warn', $currentLang, [I18n::translateRole($effectiveRole->value, $currentLang), (int) $activeSystemLeaseCount])) ?>
                         </span>
                     </div>
                 <?php endif; ?>
@@ -253,26 +256,26 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                     style="width:100%;margin-top:1.25rem;padding:0.8rem;"
                     <?= ($remainingBalance < 0 || ($maxConcurrentLeases !== null && $activeSystemLeaseCount >= $maxConcurrentLeases)) ? 'disabled' : '' ?>
                 >
-                    Provision Job Atomically &rarr;
+                    <?= e(I18n::get('tray_provision_btn', $currentLang)) ?>
                 </button>
             <?php else: ?>
                 <div class="summary-row total">
-                    <span>Total Credit Burn</span>
+                    <span><?= e(I18n::get('tray_sum_burn', $currentLang)) ?></span>
                     <span id="grand-total-credits"><?= number_format($totalCost, 2) ?> CR</span>
                 </div>
                 <p style="font-size:0.84rem;color:var(--fg-secondary);margin:1rem 0;">
-                    Authentication is required to verify your Compute Credit quota and SSH public key.
+                    <?= e(I18n::get('tray_auth_required', $currentLang)) ?>
                 </p>
                 <a href="/login" class="btn" style="width:100%;padding:0.8rem;">
-                    Sign In to Provision Job &rarr;
+                    <?= e(I18n::get('tray_signin_btn', $currentLang)) ?>
                 </a>
             <?php endif; ?>
 
             <div class="mono" style="margin-top:1.25rem;font-size:0.74rem;color:var(--fg-muted);line-height:1.5;">
-                <strong>ACID Transaction Guarantees:</strong><br>
-                1. Row-level <code>FOR UPDATE</code> lock on user &amp; target nodes.<br>
-                2. Verifies zero overlapping leases in <code>[start_time, end_time]</code>.<br>
-                3. Deducts credits &amp; issues ephemeral SSH port (20000&ndash;60000).
+                <strong><?= e(I18n::get('tray_acid_title', $currentLang)) ?></strong><br>
+                <?= I18n::get('tray_acid_1', $currentLang) ?><br>
+                <?= I18n::get('tray_acid_2', $currentLang) ?><br>
+                <?= I18n::get('tray_acid_3', $currentLang) ?>
             </div>
         </aside>
     </div>

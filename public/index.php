@@ -104,35 +104,36 @@ match ([$method, $route]) {
     // -------------------------------------------------------------------------
     // Authentication Routes
     // -------------------------------------------------------------------------
-    ['GET', '/login'] => (function () use ($currentUser, $trayService): void {
+    ['GET', '/login'] => (function () use ($currentUser, $trayService, $currentLang): void {
         if ($currentUser !== null) {
             redirect('/');
         }
-        $pageTitle = 'Sign In — VKU Allocator';
+        $pageTitle = I18n::get('page_title_login', $currentLang);
         $activeNav = 'login';
         $hydratedTray = $trayService->getHydratedTray();
         require dirname(__DIR__) . '/views/login.php';
     })(),
 
-    ['POST', '/login'] => (function () use ($authService): void {
+    ['POST', '/login'] => (function () use ($authService, $currentLang): void {
         $identifier = (string) ($_POST['identifier'] ?? '');
         $password = (string) ($_POST['password'] ?? '');
         $returnTo = (string) ($_POST['return_to'] ?? '/');
 
         $result = $authService->login($identifier, $password);
         if (!$result['ok']) {
-            setFlash('error', $result['error'] ?? 'Authentication failed.');
+            $err = isset($result['error']) ? I18n::translateServiceMessage((string) $result['error'], $currentLang) : I18n::get('flash_auth_failed', $currentLang);
+            setFlash('error', $err);
             redirect('/login');
         }
 
         $user = $result['user'];
-        setFlash('success', sprintf('Authenticated as %s (%s).', $user['student_code'], $user['role']));
+        setFlash('success', I18n::format('flash_auth_success', $currentLang, [(string) $user['student_code'], I18n::translateRole((string) $user['role'], $currentLang)]));
         redirect(str_starts_with($returnTo, '/') ? $returnTo : '/');
     })(),
 
-    ['POST', '/logout'] => (function () use ($authService): void {
+    ['POST', '/logout'] => (function () use ($authService, $currentLang): void {
         $authService->logout();
-        setFlash('info', 'Session terminated.');
+        setFlash('info', I18n::get('flash_logout', $currentLang));
         redirect('/');
     })(),
 
@@ -186,10 +187,12 @@ match ([$method, $route]) {
         $trayService,
         $currentUser,
         $currentUserRole,
-        $activeSystemLeaseCount
+        $activeSystemLeaseCount,
+        $currentLang
     ): void {
         $now = new DateTimeImmutable();
         $defaultStartStr = $now->format('Y-m-d\TH:i');
+        $minStartStr = $now->modify('-5 minutes')->format('Y-m-d\TH:i');
         $maxHorizonStr = $now->modify('+24 hours')->format('Y-m-d\TH:i');
 
         $rawFilterStart = (string) ($_GET['start_time'] ?? $trayService->getTray()['start_time'] ?? $defaultStartStr);
@@ -247,7 +250,7 @@ match ([$method, $route]) {
             }
         }
 
-        $pageTitle = 'Node Matrix — VKU Allocator';
+        $pageTitle = I18n::get('page_title_matrix', $currentLang);
         $activeNav = 'matrix';
         require dirname(__DIR__) . '/views/matrix.php';
     })(),
@@ -255,41 +258,38 @@ match ([$method, $route]) {
     // -------------------------------------------------------------------------
     // Loop B: Session Staging Tray Actions
     // -------------------------------------------------------------------------
-    ['POST', '/tray/add'] => (function () use ($trayService, $currentUserRole, $activeSystemLeaseCount): void {
+    ['POST', '/tray/add'] => (function () use ($trayService, $currentUserRole, $activeSystemLeaseCount, $currentLang): void {
         $nodeId = (int) ($_POST['node_id'] ?? 0);
         $hours = max(1, (int) ($_POST['hours'] ?? 2));
         $startTime = (string) ($_POST['start_time'] ?? '');
 
         // If logged in as STUDENT and already has 1 active/scheduled lease, block early
         if ($currentUserRole === UserRole::Student && $activeSystemLeaseCount >= 1) {
-            setFlash(
-                'error',
-                'Hoarding prevention policy: STUDENT accounts may only hold 1 active/scheduled lease across the system at any time. Terminate your current lease in the Console first.'
-            );
+            setFlash('error', I18n::get('flash_student_hoarding', $currentLang));
             redirect('/console');
         }
 
         $result = $trayService->stageNode($nodeId, $hours, $currentUserRole, $startTime);
-        setFlash($result['ok'] ? 'success' : 'error', $result['message']);
+        setFlash($result['ok'] ? 'success' : 'error', I18n::translateServiceMessage($result['message'], $currentLang));
 
         $redirectTo = (string) ($_POST['redirect_to'] ?? '/tray');
         redirect(str_starts_with($redirectTo, '/') ? $redirectTo : '/tray');
     })(),
 
-    ['POST', '/tray/remove'] => (function () use ($trayService): void {
+    ['POST', '/tray/remove'] => (function () use ($trayService, $currentLang): void {
         $nodeId = (int) ($_POST['node_id'] ?? 0);
         $trayService->removeNode($nodeId);
-        setFlash('info', 'Node removed from staging tray.');
+        setFlash('info', I18n::get('flash_node_removed', $currentLang));
         redirect('/tray');
     })(),
 
-    ['POST', '/tray/clear'] => (function () use ($trayService): void {
+    ['POST', '/tray/clear'] => (function () use ($trayService, $currentLang): void {
         $trayService->clearTray();
-        setFlash('info', 'Staging tray cleared.');
+        setFlash('info', I18n::get('flash_tray_cleared', $currentLang));
         redirect('/');
     })(),
 
-    ['POST', '/tray/update'] => (function () use ($trayService, $currentUserRole): void {
+    ['POST', '/tray/update'] => (function () use ($trayService, $currentUserRole, $currentLang): void {
         $projectName = (string) ($_POST['project_name'] ?? 'vku-research-job');
         $dockerImage = (string) ($_POST['docker_image'] ?? RuntimePreset::PyTorchCuda->value);
         $startTime = (string) ($_POST['start_time'] ?? '');
@@ -305,7 +305,7 @@ match ([$method, $route]) {
             $currentUserRole
         );
 
-        setFlash($result['ok'] ? 'success' : 'error', $result['message']);
+        setFlash($result['ok'] ? 'success' : 'error', I18n::translateServiceMessage($result['message'], $currentLang));
         redirect('/tray');
     })(),
 
@@ -313,16 +313,17 @@ match ([$method, $route]) {
         $trayService,
         $currentUser,
         $currentUserRole,
-        $activeSystemLeaseCount
+        $activeSystemLeaseCount,
+        $currentLang
     ): void {
         $now = new DateTimeImmutable();
-        $minStartStr = $now->format('Y-m-d\TH:i');
+        $minStartStr = $now->modify('-5 minutes')->format('Y-m-d\TH:i');
         $maxStartStr = $now->modify('+24 hours')->format('Y-m-d\TH:i');
 
         $hydratedTray = $trayService->getHydratedTray();
         $presets = RuntimePreset::cases();
 
-        $pageTitle = 'Job Spec Staging Tray — VKU Allocator';
+        $pageTitle = I18n::get('page_title_tray', $currentLang);
         $activeNav = 'tray';
         require dirname(__DIR__) . '/views/tray.php';
     })(),
@@ -334,10 +335,11 @@ match ([$method, $route]) {
         $currentUser,
         $currentUserRole,
         $trayService,
-        $provisioningService
+        $provisioningService,
+        $currentLang
     ): void {
         if ($currentUser === null) {
-            setFlash('error', 'Please sign in with your VKU credentials before provisioning hardware.');
+            setFlash('error', I18n::get('flash_signin_before_prov', $currentLang));
             redirect('/login');
         }
 
@@ -359,7 +361,7 @@ match ([$method, $route]) {
         );
 
         if (!$updateResult['ok']) {
-            setFlash('error', $updateResult['message']);
+            setFlash('error', I18n::translateServiceMessage($updateResult['message'], $currentLang));
             redirect('/tray');
         }
 
@@ -380,18 +382,22 @@ match ([$method, $route]) {
         );
 
         if (!$result['ok']) {
-            setFlash('error', $result['error'] ?? 'Provisioning failed.');
+            $err = isset($result['error']) ? I18n::translateServiceMessage((string) $result['error'], $currentLang) : I18n::get('flash_prov_failed', $currentLang);
+            setFlash('error', $err);
             redirect('/tray');
         }
 
         $trayService->clearTray();
         setFlash(
             'success',
-            sprintf(
-                'Allocation #%d provisioned atomically! Deducted %.2f CR across %d lease(s).',
-                $result['allocation_id'],
-                $result['total_cost'],
-                count($result['leases'] ?? [])
+            I18n::format(
+                'flash_prov_success',
+                $currentLang,
+                [
+                    (int) $result['allocation_id'],
+                    (float) $result['total_cost'],
+                    count($result['leases'] ?? []),
+                ]
             )
         );
         redirect('/console');
@@ -403,41 +409,58 @@ match ([$method, $route]) {
     ['GET', '/console'] => (function () use (
         $currentUser,
         $allocationRepo,
-        $trayService
+        $trayService,
+        $lifecycleService,
+        $currentLang
     ): void {
         if ($currentUser === null) {
-            setFlash('info', 'Sign in to access your active hardware console and SSH receipts.');
+            setFlash('info', I18n::get('flash_signin_console', $currentLang));
             redirect('/login');
         }
 
         $leases = $allocationRepo->findLeasesByUser((int) $currentUser['id']);
         $hydratedTray = $trayService->getHydratedTray();
 
-        $pageTitle = 'Active Console — VKU Allocator';
+        // Self-healing check: if user has an ACTIVE lease on vor-server, ensure CT 200 is powered on
+        foreach ($leases as $l) {
+            if (($l['lease_status'] ?? '') === 'ACTIVE' && strcasecmp((string) ($l['hostname'] ?? ''), 'vor-server') === 0) {
+                try {
+                    $guestStatus = $lifecycleService->getGuestStatus();
+                    if (is_array($guestStatus) && (($guestStatus['data']['status'] ?? '') === 'stopped') && empty($guestStatus['data']['lock'])) {
+                        $lifecycleService->startGuest();
+                    }
+                } catch (Throwable) {
+                }
+                break;
+            }
+        }
+
+        $pageTitle = I18n::get('page_title_console', $currentLang);
         $activeNav = 'console';
         require dirname(__DIR__) . '/views/console.php';
     })(),
 
-    ['POST', '/profile/ssh-key'] => (function () use ($currentUser, $userRepo): void {
+    ['POST', '/profile/ssh-key'] => (function () use ($currentUser, $userRepo, $currentLang): void {
         if ($currentUser === null) {
             redirect('/login');
         }
 
         $sshKey = trim((string) ($_POST['ssh_public_key'] ?? ''));
         if (!SshKeyValidator::isValid($sshKey)) {
-            setFlash('error', 'Invalid SSH public key format. Expected ssh-ed25519, ssh-rsa, or ecdsa-sha2-nistp*.');
+            setFlash('error', I18n::get('flash_ssh_invalid', $currentLang));
             redirect('/console');
         }
 
         $userRepo->updateSshKey((int) $currentUser['id'], $sshKey);
-        setFlash('success', 'SSH public key updated on your profile.');
+        setFlash('success', I18n::get('flash_ssh_updated', $currentLang));
         redirect('/console');
     })(),
 
     ['POST', '/lease/terminate'] => (function () use (
         $currentUser,
         $currentUserRole,
-        $provisioningService
+        $provisioningService,
+        $currentLang
     ): void {
         if ($currentUser === null) {
             redirect('/login');
@@ -453,16 +476,20 @@ match ([$method, $route]) {
         );
 
         if (!$result['ok']) {
-            setFlash('error', $result['error'] ?? 'Could not terminate lease.');
+            $err = isset($result['error']) ? I18n::translateServiceMessage((string) $result['error'], $currentLang) : I18n::get('flash_term_failed', $currentLang);
+            setFlash('error', $err);
         } else {
             setFlash(
                 'success',
-                sprintf(
-                    'Lease #%d (%s) terminated early. Refunded %.2f CR (%d unused full hour(s)) to account balance.',
-                    $leaseId,
-                    $result['hostname'],
-                    $result['refunded_credits'],
-                    $result['unused_hours']
+                I18n::format(
+                    'flash_term_success',
+                    $currentLang,
+                    [
+                        $leaseId,
+                        (string) $result['hostname'],
+                        (float) $result['refunded_credits'],
+                        (int) $result['unused_hours'],
+                    ]
                 )
             );
         }
@@ -480,10 +507,11 @@ match ([$method, $route]) {
         $nodeRepo,
         $userRepo,
         $allocationRepo,
-        $trayService
+        $trayService,
+        $currentLang
     ): void {
         if ($currentUser === null || $currentUserRole !== UserRole::Admin) {
-            setFlash('error', 'Restricted area: ADMIN role required.');
+            setFlash('error', I18n::get('flash_admin_required', $currentLang));
             redirect('/');
         }
 
@@ -494,14 +522,14 @@ match ([$method, $route]) {
         $recentLeases = $allocationRepo->findAllRecentLeases(40);
         $hydratedTray = $trayService->getHydratedTray();
 
-        $pageTitle = 'Cluster Admin — VKU Allocator';
+        $pageTitle = I18n::get('page_title_admin', $currentLang);
         $activeNav = 'admin';
         require dirname(__DIR__) . '/views/admin.php';
     })(),
 
-    ['POST', '/admin/node/status'] => (function () use ($currentUserRole, $nodeRepo): void {
+    ['POST', '/admin/node/status'] => (function () use ($currentUserRole, $nodeRepo, $currentLang): void {
         if ($currentUserRole !== UserRole::Admin) {
-            setFlash('error', 'Unauthorized.');
+            setFlash('error', I18n::get('flash_unauthorized', $currentLang));
             redirect('/');
         }
 
@@ -510,18 +538,18 @@ match ([$method, $route]) {
         $status = NodeStatus::tryFrom($statusRaw);
 
         if ($nodeId <= 0 || $status === null) {
-            setFlash('error', 'Invalid node ID or status value.');
+            setFlash('error', I18n::get('flash_invalid_node_status', $currentLang));
             redirect('/admin');
         }
 
         $nodeRepo->updateStatus($nodeId, $status);
-        setFlash('success', sprintf('Node #%d status updated to %s.', $nodeId, $status->value));
+        setFlash('success', I18n::format('flash_node_status_updated', $currentLang, [$nodeId, I18n::translateStatus($status->value, $currentLang)]));
         redirect('/admin');
     })(),
 
-    ['POST', '/admin/node/create'] => (function () use ($currentUserRole, $nodeRepo): void {
+    ['POST', '/admin/node/create'] => (function () use ($currentUserRole, $nodeRepo, $currentLang): void {
         if ($currentUserRole !== UserRole::Admin) {
-            setFlash('error', 'Unauthorized.');
+            setFlash('error', I18n::get('flash_unauthorized', $currentLang));
             redirect('/');
         }
 
@@ -535,7 +563,7 @@ match ([$method, $route]) {
         $creditsPerHour = max(0.5, (float) ($_POST['credits_per_hour'] ?? 10.0));
 
         if ($hostname === '' || $ipAddress === '') {
-            setFlash('error', 'Hostname and IP address are required to register a hardware node.');
+            setFlash('error', I18n::get('flash_node_host_ip_req', $currentLang));
             redirect('/admin');
         }
 
@@ -551,17 +579,17 @@ match ([$method, $route]) {
                 creditsPerHour: $creditsPerHour,
                 status: NodeStatus::Online,
             );
-            setFlash('success', sprintf('Registered hardware node %s (#%d).', $hostname, $newId));
+            setFlash('success', I18n::format('flash_node_created', $currentLang, [$hostname, $newId]));
         } catch (Throwable $e) {
-            setFlash('error', 'Could not create node: ' . $e->getMessage());
+            setFlash('error', I18n::get('flash_node_create_err', $currentLang) . $e->getMessage());
         }
 
         redirect('/admin');
     })(),
 
-    ['POST', '/admin/user/topup'] => (function () use ($currentUserRole, $userRepo): void {
+    ['POST', '/admin/user/topup'] => (function () use ($currentUserRole, $userRepo, $currentLang): void {
         if ($currentUserRole !== UserRole::Admin) {
-            setFlash('error', 'Unauthorized.');
+            setFlash('error', I18n::get('flash_unauthorized', $currentLang));
             redirect('/');
         }
 
@@ -569,15 +597,15 @@ match ([$method, $route]) {
         $amount = round((float) ($_POST['amount'] ?? 0), 2);
 
         if ($targetUserId <= 0 || $amount === 0.0) {
-            setFlash('error', 'Specify a valid user and non-zero credit delta.');
+            setFlash('error', I18n::get('flash_topup_invalid', $currentLang));
             redirect('/admin');
         }
 
         try {
             $userRepo->adjustCredits($targetUserId, $amount);
-            setFlash('success', sprintf('Adjusted user #%d credit quota by %+.2f CR.', $targetUserId, $amount));
+            setFlash('success', I18n::format('flash_topup_success', $currentLang, [$targetUserId, $amount]));
         } catch (Throwable $e) {
-            setFlash('error', 'Credit adjustment failed: ' . $e->getMessage());
+            setFlash('error', I18n::get('flash_topup_err', $currentLang) . $e->getMessage());
         }
 
         redirect('/admin');
@@ -613,13 +641,13 @@ match ([$method, $route]) {
         ]);
     })(),
 
-    default => (function () use ($trayService, $currentUser): void {
+    default => (function () use ($trayService, $currentUser, $currentLang): void {
         http_response_code(404);
         $hydratedTray = $trayService->getHydratedTray();
-        $pageTitle = '404 Not Found — VKU Allocator';
+        $pageTitle = I18n::get('page_title_404', $currentLang);
         $activeNav = '';
         echo '<!DOCTYPE html><html><body style="font-family:monospace;padding:3rem;">';
-        echo '<h1>404 — Route Not Found</h1><p><a href="/">Return to VKU Node Matrix</a></p>';
+        echo '<h1>' . e(I18n::get('err_404_heading', $currentLang)) . '</h1><p><a href="/">' . e(I18n::get('err_404_back', $currentLang)) . '</a></p>';
         echo '</body></html>';
     })(),
 };

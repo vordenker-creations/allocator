@@ -1,25 +1,27 @@
 <?php
 declare(strict_types=1);
 
+use VKU\Allocator\Service\I18n;
+
 require __DIR__ . '/layout_top.php';
 ?>
 
 <div style="max-width:520px;margin:2rem auto;">
     <section class="panel">
         <div class="panel-title">
-            <span>VKU Identity Authentication</span>
-            <span class="mono" style="font-size:0.74rem;color:var(--fg-muted);">Argon2id Auth</span>
+            <span><?= e(I18n::get('login_title', $currentLang)) ?></span>
+            <span class="mono" style="font-size:0.74rem;color:var(--fg-muted);"><?= e(I18n::get('login_badge', $currentLang)) ?></span>
         </div>
 
         <p style="font-size:0.88rem;color:var(--fg-secondary);margin-bottom:1.25rem;">
-            Sign in with your VKU Student Code / Staff ID or `@vku.udn.vn` email address to stage and provision cluster hardware.
+            <?= e(I18n::get('login_desc', $currentLang)) ?>
         </p>
 
         <form method="POST" action="/login">
             <input type="hidden" name="return_to" value="<?= e($_GET['return_to'] ?? '/tray') ?>">
 
             <div class="form-group" style="margin-bottom:1rem;">
-                <label class="form-label" for="identifier">Student Code / Staff ID or VKU Email</label>
+                <label class="form-label" for="identifier"><?= e(I18n::get('login_id_label', $currentLang)) ?></label>
                 <input
                     type="text"
                     id="identifier"
@@ -27,12 +29,12 @@ require __DIR__ . '/layout_top.php';
                     class="form-control"
                     required
                     autofocus
-                    placeholder="22IT001 or an.nv.22it@vku.udn.vn"
+                    placeholder="<?= e(I18n::get('login_id_placeholder', $currentLang)) ?>"
                 >
             </div>
 
             <div class="form-group" style="margin-bottom:1.25rem;">
-                <label class="form-label" for="password">Password</label>
+                <label class="form-label" for="password"><?= e(I18n::get('login_pw_label', $currentLang)) ?></label>
                 <input
                     type="password"
                     id="password"
@@ -44,17 +46,17 @@ require __DIR__ . '/layout_top.php';
             </div>
 
             <button type="submit" class="btn" style="width:100%;padding:0.75rem;">
-                Authenticate &rarr;
+                <?= e(I18n::get('login_submit_btn', $currentLang)) ?>
             </button>
         </form>
     </section>
 
     <section class="panel">
         <div class="panel-title">
-            <span>Quick-Fill Demo Accounts (Viva / Grading)</span>
+            <span><?= e(I18n::get('login_demo_title', $currentLang)) ?></span>
         </div>
         <p class="mono" style="font-size:0.76rem;color:var(--fg-muted);margin-bottom:0.85rem;">
-            Click any role below to auto-fill credentials (Password: <code>vku2026</code>):
+            <?= e(I18n::get('login_demo_hint', $currentLang)) ?> <code>vku2026</code>):
         </p>
         <div style="display:flex;flex-direction:column;gap:0.5rem;">
             <button
@@ -63,8 +65,8 @@ require __DIR__ . '/layout_top.php';
                 style="justify-content:space-between;"
                 onclick="fillLogin('22IT001', 'vku2026')"
             >
-                <span><strong>STUDENT</strong> &mdash; 22IT001 (Nguyen Van An)</span>
-                <span>Max 1 Node/Job &bull; 240 CR</span>
+                <span><strong><?= e(I18n::translateRole('STUDENT', $currentLang)) ?></strong> &mdash; <?= e(I18n::get('login_demo_student_name', $currentLang)) ?></span>
+                <span><?= e(I18n::get('login_demo_student_cap', $currentLang)) ?></span>
             </button>
             <button
                 type="button"
@@ -72,8 +74,8 @@ require __DIR__ . '/layout_top.php';
                 style="justify-content:space-between;"
                 onclick="fillLogin('RES104', 'vku2026')"
             >
-                <span><strong>RESEARCHER</strong> &mdash; RES104 (Dr. Le Hoang Nam)</span>
-                <span>Max 3 Nodes/Job &bull; 1250 CR</span>
+                <span><strong><?= e(I18n::translateRole('RESEARCHER', $currentLang)) ?></strong> &mdash; <?= e(I18n::get('login_demo_res_name', $currentLang)) ?></span>
+                <span><?= e(I18n::get('login_demo_res_cap', $currentLang)) ?></span>
             </button>
             <button
                 type="button"
@@ -81,8 +83,8 @@ require __DIR__ . '/layout_top.php';
                 style="justify-content:space-between;"
                 onclick="fillLogin('ADMIN01', 'vku2026')"
             >
-                <span><strong>ADMIN</strong> &mdash; ADMIN01 (HPC Cluster Admin)</span>
-                <span>Max 3 Nodes/Job &bull; 9999 CR</span>
+                <span><strong><?= e(I18n::translateRole('ADMIN', $currentLang)) ?></strong> &mdash; <?= e(I18n::get('login_demo_admin_name', $currentLang)) ?></span>
+                <span><?= e(I18n::get('login_demo_admin_cap', $currentLang)) ?></span>
             </button>
         </div>
     </section>

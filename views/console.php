@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+use VKU\Allocator\Service\I18n;
+
 require __DIR__ . '/layout_top.php';
 
 $now = new DateTimeImmutable();
@@ -20,27 +22,27 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Active Compute Console &amp; Lease Receipts</h1>
+        <h1 class="page-title"><?= e(I18n::get('console_title', $currentLang)) ?></h1>
         <p class="page-subtitle">
-            Connect via ephemeral SSH tunnel, monitor live lease countdowns, or trigger early release for an automatic pro-rata credit refund.
+            <?= e(I18n::get('console_subtitle', $currentLang)) ?>
         </p>
     </div>
     <div>
-        <a href="/" class="btn btn-outline">+ Provision New Hardware</a>
+        <a href="/" class="btn btn-outline"><?= e(I18n::get('console_new_hw_btn', $currentLang)) ?></a>
     </div>
 </div>
 
 <section class="panel">
     <div class="panel-title">
-        <span>Active &amp; Scheduled Hardware Leases (<?= count($activeLeases) ?>)</span>
+        <span><?= e(I18n::format('console_active_panel', $currentLang, [count($activeLeases)])) ?></span>
         <span class="mono" style="font-size:0.78rem;color:var(--fg-muted);font-weight:400;">
-            Server Clock: <?= e($now->format('Y-m-d H:i:s')) ?> (UTC+7)
+            <?= e(I18n::get('console_server_clock', $currentLang)) ?> <?= e($now->format('Y-m-d H:i:s')) ?> (UTC+7)
         </span>
     </div>
 
     <?php if ($activeLeases === []): ?>
         <p class="mono" style="color:var(--fg-secondary);padding:1rem 0;">
-            No active or scheduled leases at this time. Visit the <a href="/">Node Matrix</a> to stage hardware.
+            <?= e(I18n::get('console_empty_prefix', $currentLang)) ?> <a href="/"><?= e(I18n::get('nav_node_matrix', $currentLang)) ?></a> <?= e(I18n::get('console_empty_suffix', $currentLang)) ?>
         </p>
     <?php else: ?>
         <div style="display:flex;flex-direction:column;gap:1.25rem;">
@@ -67,23 +69,24 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                     $studentHandle,
                     $publicHost
                 );
+                $confirmMsg = I18n::format('console_terminate_confirm', $currentLang, [$leaseId, (string) $lease['hostname'], number_format($estimatedRefund, 2)]);
                 ?>
                 <div class="node-card" style="background-color:var(--bg-primary);border-color:var(--border-strong);">
                     <div class="node-card-top">
                         <div>
                             <span class="badge <?= $status === 'ACTIVE' ? 'badge-active' : 'badge-scheduled' ?>">
-                                <span class="status-dot"></span><?= e($status) ?>
+                                <span class="status-dot"></span><?= e(I18n::translateStatus($status, $currentLang)) ?>
                             </span>
                             <span class="mono" style="font-weight:700;font-size:1.05rem;margin-left:0.5rem;">
                                 <?= e($lease['hostname']) ?>
                             </span>
                             <span class="mono" style="color:var(--fg-muted);font-size:0.82rem;margin-left:0.4rem;">
-                                [Job #<?= (int) $lease['allocation_id'] ?>: <?= e($lease['project_name']) ?>]
+                                [<?= e(I18n::get('console_job_prefix', $currentLang)) ?> #<?= (int) $lease['allocation_id'] ?>: <?= e($lease['project_name']) ?>]
                             </span>
                         </div>
                         <div class="mono" style="text-align:right;">
                             <div style="font-size:0.74rem;color:var(--fg-muted);">
-                                <?= $status === 'ACTIVE' ? 'Remaining Lease Window' : 'Starts In / Window' ?>
+                                <?= e($status === 'ACTIVE' ? I18n::get('console_rem_window', $currentLang) : I18n::get('console_starts_in_label', $currentLang)) ?>
                             </div>
                             <div
                                 class="live-countdown"
@@ -92,7 +95,7 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                                 data-status="<?= e($status) ?>"
                                 style="font-size:1rem;font-weight:700;"
                             >
-                                Calculating...
+                                <?= e(I18n::get('console_calculating', $currentLang)) ?>
                             </div>
                         </div>
                     </div>
@@ -108,32 +111,32 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                             style="background:#FAF8F5;color:#141413;border-color:#FAF8F5;"
                             onclick="copyTextToClipboard(<?= e(json_encode($sshCommand)) ?>, this)"
                         >
-                            Copy SSH
+                            <?= e(I18n::get('console_copy_ssh', $currentLang)) ?>
                         </button>
                     </div>
 
                     <div class="spec-list" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));">
                         <div class="spec-item">
-                            <span>Runtime Container Image</span>
+                            <span><?= e(I18n::get('console_spec_image', $currentLang)) ?></span>
                             <strong><?= e($lease['docker_image']) ?></strong>
                         </div>
                         <div class="spec-item">
-                            <span>Lease Window</span>
+                            <span><?= e(I18n::get('console_spec_window', $currentLang)) ?></span>
                             <strong><?= e($startDt->format('Y-m-d H:i')) ?> &rarr; <?= e($endDt->format('Y-m-d H:i')) ?></strong>
                         </div>
                         <div class="spec-item">
-                            <span>Ephemeral Port / Node IP</span>
-                            <strong>Port <?= (int) $lease['assigned_port'] ?> &rarr; <?= e($lease['ip_address']) ?>:22</strong>
+                            <span><?= e(I18n::get('console_spec_port', $currentLang)) ?></span>
+                            <strong><?= e(I18n::format('console_spec_port_val', $currentLang, [(int) $lease['assigned_port'], (string) $lease['ip_address']])) ?></strong>
                         </div>
                         <div class="spec-item">
-                            <span>Access Token (32-Char Hex)</span>
+                            <span><?= e(I18n::get('console_spec_token', $currentLang)) ?></span>
                             <strong><code><?= e($lease['access_token']) ?></code></strong>
                         </div>
                     </div>
 
                     <?php if (!empty($lease['startup_script'])): ?>
                         <div class="mono" style="font-size:0.78rem;background:var(--bg-elevated);padding:0.6rem 0.8rem;border:1px solid var(--border-color);">
-                            <span style="color:var(--fg-muted);display:block;margin-bottom:0.2rem;">STARTUP SCRIPT:</span>
+                            <span style="color:var(--fg-muted);display:block;margin-bottom:0.2rem;"><?= e(I18n::get('console_startup_script', $currentLang)) ?></span>
                             <pre style="white-space:pre-wrap;"><?= e($lease['startup_script']) ?></pre>
                         </div>
                     <?php endif; ?>
@@ -149,8 +152,8 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                             <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;">
                                 <div class="mono" style="font-size:0.8rem;">
                                     <span class="status-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--status-online-fg);margin-right:0.4rem;"></span>
-                                    <strong>vor-compute (CT 200) Browser Shell</strong>
-                                    <span style="color:var(--fg-muted);margin-left:0.35rem;">&bull; Token-Gated Ephemeral Alpine Session</span>
+                                    <strong><?= e(I18n::get('console_shell_title', $currentLang)) ?></strong>
+                                    <span style="color:var(--fg-muted);margin-left:0.35rem;"><?= e(I18n::get('console_shell_sub', $currentLang)) ?></span>
                                 </div>
                                 <div style="display:flex;gap:0.5rem;">
                                     <button
@@ -158,7 +161,7 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                                         class="btn btn-sm"
                                         onclick="toggleWebTerminal(<?= e(json_encode($terminalWrapId)) ?>, <?= e(json_encode($terminalFrameId)) ?>, <?= e(json_encode($shellUrl)) ?>, this)"
                                     >
-                                        Launch Web Terminal
+                                        <?= e(I18n::get('console_launch_shell', $currentLang)) ?>
                                     </button>
                                     <a
                                         href="<?= e($shellUrl) ?>"
@@ -166,7 +169,7 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                                         rel="noopener noreferrer"
                                         class="btn btn-outline btn-sm"
                                     >
-                                        Pop Out &nearr;
+                                        <?= e(I18n::get('console_pop_out', $currentLang)) ?>
                                     </a>
                                 </div>
                             </div>
@@ -184,22 +187,22 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
 
                     <div class="node-card-footer">
                         <div class="mono" style="font-size:0.8rem;">
-                            Locked Rate: <strong><?= number_format($rate, 2) ?> CR/h</strong> &bull;
-                            Early Release Pro-Rata Refund:
+                            <?= e(I18n::get('console_locked_rate', $currentLang)) ?> <strong><?= number_format($rate, 2) ?> CR/h</strong> &bull;
+                            <?= e(I18n::get('console_early_refund', $currentLang)) ?>
                             <strong style="color:var(--status-online-fg);">
-                                +<?= number_format($estimatedRefund, 2) ?> CR (<?= $unusedFullHours ?> unused full hr)
+                                +<?= number_format($estimatedRefund, 2) ?> CR (<?= $unusedFullHours ?> <?= e(I18n::get('console_unused_hr', $currentLang)) ?>)
                             </strong>
                         </div>
 
                         <form
                             method="POST"
                             action="/lease/terminate"
-                            onsubmit="return confirm('Terminate lease #<?= $leaseId ?> on <?= e($lease['hostname']) ?> early and refund <?= number_format($estimatedRefund, 2) ?> CR?');"
+                            onsubmit="return confirm(<?= e(json_encode($confirmMsg)) ?>);"
                         >
                             <input type="hidden" name="lease_id" value="<?= $leaseId ?>">
                             <input type="hidden" name="return_to" value="/console">
                             <button type="submit" class="btn btn-danger btn-sm">
-                                Terminate Lease &amp; Refund <?= number_format($estimatedRefund, 2) ?> CR
+                                <?= e(I18n::format('console_terminate_btn', $currentLang, [number_format($estimatedRefund, 2)])) ?>
                             </button>
                         </form>
                     </div>
@@ -212,20 +215,20 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
 <div class="split-grid">
     <section class="panel">
         <div class="panel-title">
-            <span>Lease Audit History (<?= count($historyLeases) ?>)</span>
+            <span><?= e(I18n::format('console_history_title', $currentLang, [count($historyLeases)])) ?></span>
         </div>
         <?php if ($historyLeases === []): ?>
-            <p class="mono" style="color:var(--fg-muted);font-size:0.84rem;">No expired or cancelled leases yet.</p>
+            <p class="mono" style="color:var(--fg-muted);font-size:0.84rem;"><?= e(I18n::get('console_history_empty', $currentLang)) ?></p>
         <?php else: ?>
             <div class="table-wrap">
                 <table>
                     <thead>
                         <tr>
-                            <th>Lease</th>
-                            <th>Node / Project</th>
-                            <th>Window</th>
-                            <th>Status</th>
-                            <th>Refunded</th>
+                            <th><?= e(I18n::get('th_lease', $currentLang)) ?></th>
+                            <th><?= e(I18n::get('th_node_project', $currentLang)) ?></th>
+                            <th><?= e(I18n::get('th_window', $currentLang)) ?></th>
+                            <th><?= e(I18n::get('th_status', $currentLang)) ?></th>
+                            <th><?= e(I18n::get('th_refunded', $currentLang)) ?></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -242,7 +245,7 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                                 </td>
                                 <td>
                                     <span class="badge badge-<?= strtolower((string) $h['lease_status']) ?>">
-                                        <span class="status-dot"></span><?= e($h['lease_status']) ?>
+                                        <span class="status-dot"></span><?= e(I18n::translateStatus((string) $h['lease_status'], $currentLang)) ?>
                                     </span>
                                 </td>
                                 <td class="mono"><?= number_format((float) $h['refunded_credits'], 2) ?> CR</td>
@@ -256,11 +259,11 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
 
     <section class="panel">
         <div class="panel-title">
-            <span>SSH Public Key Profile</span>
+            <span><?= e(I18n::get('console_ssh_profile_title', $currentLang)) ?></span>
         </div>
         <form method="POST" action="/profile/ssh-key">
             <div class="form-group" style="margin-bottom:0.85rem;">
-                <label class="form-label" for="profile_ssh_key">Authorized OpenSSH Key (ed25519 / rsa / ecdsa)</label>
+                <label class="form-label" for="profile_ssh_key"><?= e(I18n::get('console_ssh_profile_label', $currentLang)) ?></label>
                 <textarea
                     id="profile_ssh_key"
                     name="ssh_public_key"
@@ -269,7 +272,7 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                     placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user@vku.udn.vn"
                 ><?= e($currentUser['ssh_public_key'] ?? '') ?></textarea>
             </div>
-            <button type="submit" class="btn btn-outline btn-sm">Update SSH Public Key</button>
+            <button type="submit" class="btn btn-outline btn-sm"><?= e(I18n::get('console_ssh_update_btn', $currentLang)) ?></button>
         </form>
     </section>
 </div>
@@ -285,16 +288,20 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                 frame.setAttribute('src', url);
             }
             wrap.style.display = 'block';
-            btn.textContent = 'Hide Web Terminal';
+            btn.textContent = <?= json_encode(I18n::get('console_hide_shell', $currentLang)) ?>;
         } else {
             wrap.style.display = 'none';
-            btn.textContent = 'Launch Web Terminal';
+            btn.textContent = <?= json_encode(I18n::get('console_launch_shell', $currentLang)) ?>;
         }
     }
 
     (function () {
         const timers = document.querySelectorAll('.live-countdown');
         if (!timers.length) return;
+
+        const startsInLabel = <?= json_encode(I18n::get('js_starts_in', $currentLang)) ?>;
+        const remainingLabel = <?= json_encode(I18n::get('js_remaining', $currentLang)) ?>;
+        const expiredLabel = <?= json_encode(I18n::get('js_window_expired', $currentLang)) ?>;
 
         function formatDuration(sec) {
             if (sec <= 0) return '00h 00m 00s';
@@ -313,11 +320,11 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                 const endTs = parseInt(el.getAttribute('data-end-ts') || '0', 10);
 
                 if (nowSec < startTs) {
-                    el.textContent = 'Starts in ' + formatDuration(startTs - nowSec);
+                    el.textContent = startsInLabel + formatDuration(startTs - nowSec);
                 } else if (nowSec < endTs) {
-                    el.textContent = formatDuration(endTs - nowSec) + ' remaining';
+                    el.textContent = formatDuration(endTs - nowSec) + remainingLabel;
                 } else {
-                    el.textContent = 'Window Expired';
+                    el.textContent = expiredLabel;
                 }
             });
         }

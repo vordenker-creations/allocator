@@ -43,9 +43,9 @@ services:
       PROXMOX_LEASE_VMID: "${PROXMOX_LEASE_VMID:-200}"
       PROXMOX_LEASE_GUEST_TYPE: "${PROXMOX_LEASE_GUEST_TYPE:-lxc}"
       PROXMOX_HOST_VMID: "${PROXMOX_HOST_VMID:-100}"
-      PROXMOX_CLEAN_SNAPSHOT: "${PROXMOX_CLEAN_SNAPSHOT:-clean}"
+      PROXMOX_CLEAN_SNAPSHOT: "${PROXMOX_CLEAN_SNAPSHOT:-}"
     ports:
-      - "${APP_PORT:-8090}:80"
+      - "8080:80"
     volumes:
       - .:/var/www/html
     depends_on:

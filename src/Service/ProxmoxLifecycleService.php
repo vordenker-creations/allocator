@@ -217,9 +217,14 @@ class ProxmoxLifecycleService
 
         $node = $this->resolveNodeName();
 
-        // Optional ephemeral state wipe: rollback to clean snapshot before booting if configured
+        // Optional ephemeral state wipe: rollback to clean snapshot before booting if configured.
+        // Pass start=1 so Proxmox's vzrollback/qmrollback worker boots the guest atomically on completion,
+        // and wait for the rollback lock to clear before issuing /status/start as a guarantee.
         if ($this->cleanSnapshot !== null && $this->cleanSnapshot !== '') {
-            $this->rollbackGuest($targetVmid, $this->cleanSnapshot);
+            $rollbackRes = $this->rollbackGuest($targetVmid, $this->cleanSnapshot, true, $node);
+            if ($this->httpExecutor === null && ($rollbackRes['ok'] ?? false)) {
+                $this->waitForTaskOrUnlock($node, $targetVmid, $rollbackRes['upid'] ?? null, 4000);
+            }
         }
 
         $url = sprintf(
@@ -231,6 +236,31 @@ class ProxmoxLifecycleService
         );
 
         $res = $this->executePostRequest($url, [], 'start');
+
+        // If Proxmox is still finishing a background rollback/shutdown lock, retry start briefly
+        if (!$res['ok'] && $this->httpExecutor === null) {
+            for ($attempt = 0; $attempt < 5; $attempt++) {
+                $errLower = strtolower((string) ($res['error'] ?? ''));
+                if (!str_contains($errLower, 'lock') && !str_contains($errLower, 'timeout') && !str_contains($errLower, '500')) {
+                    break;
+                }
+                usleep(400000); // 400ms
+                $current = $this->getGuestStatus($targetVmid, $node);
+                if (is_array($current) && (($current['data']['status'] ?? '') === 'running') && empty($current['data']['lock'])) {
+                    $res = [
+                        'ok' => true,
+                        'status' => 'already_running',
+                        'upid' => null,
+                        'error' => null,
+                    ];
+                    break;
+                }
+                $res = $this->executePostRequest($url, [], 'start');
+                if ($res['ok']) {
+                    break;
+                }
+            }
+        }
 
         return [
             'ok' => $res['ok'],
@@ -323,9 +353,12 @@ class ProxmoxLifecycleService
 
         $res = $this->executePostRequest($url, [], $actionName);
 
-        // Optional ephemeral state wipe: rollback to clean snapshot after stopping if configured
+        // Optional ephemeral state wipe: wait for shutdown task to release lock before rolling back
         if ($this->cleanSnapshot !== null && $this->cleanSnapshot !== '') {
-            $this->rollbackGuest($targetVmid, $this->cleanSnapshot);
+            if ($this->httpExecutor === null && ($res['ok'] ?? false) && !empty($res['upid'])) {
+                $this->waitForTaskOrUnlock($node, $targetVmid, $res['upid'], 3500);
+            }
+            $this->rollbackGuest($targetVmid, $this->cleanSnapshot, false, $node);
         }
 
         return [
@@ -343,8 +376,12 @@ class ProxmoxLifecycleService
     /**
      * Rolls back the configured Proxmox guest to a named LVM-Thin/ZFS snapshot (e.g. 'clean').
      */
-    public function rollbackGuest(?int $vmid = null, ?string $snapshot = null): array
-    {
+    public function rollbackGuest(
+        ?int $vmid = null,
+        ?string $snapshot = null,
+        bool $startAfterRollback = false,
+        ?string $resolvedNode = null,
+    ): array {
         $targetVmid = $vmid ?? $this->leaseVmid;
         $snapName = trim((string) ($snapshot ?? $this->cleanSnapshot ?? ''));
 
@@ -391,7 +428,7 @@ class ProxmoxLifecycleService
             ];
         }
 
-        $node = $this->resolveNodeName();
+        $node = ($resolvedNode !== null && $resolvedNode !== '') ? $resolvedNode : $this->resolveNodeName();
         $url = sprintf(
             '%s/api2/json/nodes/%s/%s/%s/snapshot/%s/rollback',
             $this->host,
@@ -401,7 +438,8 @@ class ProxmoxLifecycleService
             rawurlencode($snapName)
         );
 
-        $res = $this->executePostRequest($url, [], 'rollback');
+        $params = $startAfterRollback ? ['start' => 1] : [];
+        $res = $this->executePostRequest($url, $params, 'rollback');
 
         return [
             'ok' => $res['ok'],
@@ -418,7 +456,7 @@ class ProxmoxLifecycleService
     /**
      * Retrieves current status for the target guest.
      */
-    public function getGuestStatus(?int $vmid = null): ?array
+    public function getGuestStatus(?int $vmid = null, ?string $resolvedNode = null): ?array
     {
         $targetVmid = $vmid ?? $this->leaseVmid;
         if ($targetVmid === null || !$this->isTargetAllowed($targetVmid)) {
@@ -429,7 +467,7 @@ class ProxmoxLifecycleService
             return null;
         }
 
-        $node = $this->resolveNodeName();
+        $node = ($resolvedNode !== null && $resolvedNode !== '') ? $resolvedNode : $this->resolveNodeName();
         $url = sprintf(
             '%s/api2/json/nodes/%s/%s/%s/status/current',
             $this->host,
@@ -439,6 +477,43 @@ class ProxmoxLifecycleService
         );
 
         return $this->executeGetRequest($url);
+    }
+
+    /**
+     * Polls Proxmox task status and guest lock until the background task finishes or timeout elapses.
+     */
+    private function waitForTaskOrUnlock(string $node, int $vmid, ?string $upid, int $maxWaitMs = 3500): void
+    {
+        $elapsedMs = 0;
+        $stepMs = 250;
+
+        while ($elapsedMs < $maxWaitMs) {
+            usleep($stepMs * 1000);
+            $elapsedMs += $stepMs;
+
+            if ($upid !== null && $upid !== '') {
+                $taskUrl = sprintf(
+                    '%s/api2/json/nodes/%s/tasks/%s/status',
+                    $this->host,
+                    rawurlencode($node),
+                    rawurlencode($upid)
+                );
+                $taskStatus = $this->executeGetRequest($taskUrl);
+                if (is_array($taskStatus) && isset($taskStatus['data']['status'])) {
+                    if ($taskStatus['data']['status'] === 'stopped') {
+                        break;
+                    }
+                    continue;
+                }
+            }
+
+            $guestStatus = $this->getGuestStatus($vmid, $node);
+            if (is_array($guestStatus) && isset($guestStatus['data']) && is_array($guestStatus['data'])) {
+                if (empty($guestStatus['data']['lock'])) {
+                    break;
+                }
+            }
+        }
     }
 
     public function getLeaseVmid(): ?int
@@ -555,8 +630,8 @@ class ProxmoxLifecycleService
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => 0,
-            CURLOPT_TIMEOUT_MS => 1500,
-            CURLOPT_CONNECTTIMEOUT_MS => 1500,
+            CURLOPT_TIMEOUT_MS => 5000,
+            CURLOPT_CONNECTTIMEOUT_MS => 2000,
         ]);
 
         $response = curl_exec($ch);

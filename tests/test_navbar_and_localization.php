@@ -7,6 +7,7 @@ require_once dirname(__DIR__) . '/vendor/autoload.php';
 date_default_timezone_set('Asia/Ho_Chi_Minh');
 
 use VKU\Allocator\Service\I18n;
+use VKU\Allocator\Service\ProxmoxLifecycleService;
 
 $passed = 0;
 $failed = 0;
@@ -265,7 +266,7 @@ assertCheck(
 );
 
 // -----------------------------------------------------------------------------
-// Suite 5: UI Label Localization Coverage
+// Suite 5: UI Label Localization Coverage across Entire Application
 // -----------------------------------------------------------------------------
 echo "\n5. Testing UI Label Localization Coverage...\n";
 
@@ -292,6 +293,11 @@ assertCheck($viLabels['nav_sign_out'] === 'Đăng xuất', 'VI mapping: Đăng x
 
 assertCheck($enLabels['nav_theme'] === 'Theme', 'EN mapping: Theme');
 assertCheck($viLabels['nav_theme'] === 'Giao diện', 'VI mapping: Giao diện');
+
+assertCheck(count($enLabels) === count($viLabels) && count($enLabels) > 120, 'Full application dictionary has parity between EN and VI (> 120 keys)');
+assertCheck(I18n::translateStatus('ONLINE // FREE', 'vi') === 'TRỰC TUYẾN // TRỐNG', 'VI status translation: ONLINE // FREE');
+assertCheck(I18n::translateRole('STUDENT', 'vi') === 'SINH VIÊN', 'VI role translation: STUDENT');
+assertCheck(I18n::translateTierName('CUDA_COMPUTE', 'CUDA Compute Nodes', 'vi') === 'Cụm Node Tính Toán CUDA', 'VI tier name translation: CUDA_COMPUTE');
 
 // -----------------------------------------------------------------------------
 // Suite 6: Rendered Layout Top Localization & Mode Switching
@@ -396,6 +402,42 @@ assertCheck($validateReturnTo('', 'localhost:8080', 'http://localhost:8080/matri
 assertCheck($validateReturnTo('', 'localhost:8080', 'https://attacker.com/steal') === '/', 'External Referer safely rejected to / when return_to is empty');
 assertCheck($validateReturnTo('/console#leases') === '/console#leases', 'URL fragment hash preserved across redirection');
 assertCheck($validateReturnTo('http://:80') === '/', 'Malformed URL parsing handled safely without errors');
+
+// -----------------------------------------------------------------------------
+// Suite 8: CT 200 Rollback + Start Parameter Verification
+// -----------------------------------------------------------------------------
+echo "\n8. Testing CT 200 Snapshot Rollback + Start-on-Rollback Dispatch...\n";
+
+$rollbackCalls = [];
+$rollbackExec = function (string $url, array $headers, string $method = 'POST', array $params = []) use (&$rollbackCalls): array {
+    $rollbackCalls[] = ['url' => $url, 'method' => $method, 'params' => $params];
+    if (str_contains($url, '/api2/json/nodes') && !str_contains($url, '/lxc/')) {
+        return ['data' => [['node' => 'vor', 'status' => 'online']]];
+    }
+    return ['data' => 'UPID:vor:00001234:00112233:659F2537:vzstart:200:root@pam!allocator:'];
+};
+
+$ctLifecycle = new ProxmoxLifecycleService(
+    host: 'https://192.168.1.200:8006',
+    node: 'vor',
+    tokenId: 'root@pam!allocator',
+    tokenSecret: 'secret',
+    leaseVmid: 200,
+    guestType: 'lxc',
+    hostVmid: 100,
+    httpExecutor: $rollbackExec,
+    cleanSnapshot: 'clean'
+);
+
+$ctStartRes = $ctLifecycle->startGuest();
+assertCheck($ctStartRes['ok'] === true, 'startGuest with cleanSnapshot succeeds');
+$foundRollbackWithStart = false;
+foreach ($rollbackCalls as $call) {
+    if (str_contains($call['url'], '/lxc/200/snapshot/clean/rollback') && ($call['params']['start'] ?? null) === 1) {
+        $foundRollbackWithStart = true;
+    }
+}
+assertCheck($foundRollbackWithStart, 'startGuest passes start=1 to /lxc/200/snapshot/clean/rollback so CT 200 boots atomically');
 
 // -----------------------------------------------------------------------------
 // Summary

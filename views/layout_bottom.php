@@ -1,7 +1,20 @@
+<?php
+declare(strict_types=1);
+
+use VKU\Allocator\Service\I18n;
+
+$currentLang = $currentLang ?? I18n::resolve(
+    isset($_GET['lang']) && is_string($_GET['lang']) ? $_GET['lang'] : null,
+    isset($_COOKIE['vku_lang']) && is_string($_COOKIE['vku_lang']) ? $_COOKIE['vku_lang'] : (isset($_COOKIE['lang']) && is_string($_COOKIE['lang']) ? $_COOKIE['lang'] : null),
+    isset($_SESSION['lang']) && is_string($_SESSION['lang']) ? $_SESSION['lang'] : null
+);
+$phpVer = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
+$copiedText = I18n::get('copied_btn', $currentLang);
+?>
 </main>
 
 <footer class="footer">
-    VKU’s Allocator &mdash; Vietnam-Korea University of Information and Communication Technology &bull; PHP <?= PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ?> + MySQL 8.4 (3NF ACID Scheduler)
+    <?= e(I18n::format('footer_text', $currentLang, [$phpVer])) ?>
 </footer>
 
 <script>
@@ -49,7 +62,7 @@
         if (!navigator.clipboard) return;
         navigator.clipboard.writeText(text).then(function () {
             const orig = buttonEl.textContent;
-            buttonEl.textContent = 'Copied!';
+            buttonEl.textContent = <?= json_encode($copiedText) ?>;
             setTimeout(function () {
                 buttonEl.textContent = orig;
             }, 1400);

@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+use VKU\Allocator\Service\I18n;
+
 require __DIR__ . '/layout_top.php';
 
 $stagedMap = [];
@@ -15,64 +17,64 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Campus Compute &amp; Hardware Node Matrix</h1>
+        <h1 class="page-title"><?= e(I18n::get('matrix_title', $currentLang)) ?></h1>
         <p class="page-subtitle">
-            Inspect live cluster telemetry, filter by target time window (24-Hour Reservation Horizon) or VRAM, and stage hardware into your Job Spec Tray.
+            <!-- 24-Hour Reservation Horizon -->
+            <?= e(I18n::get('matrix_subtitle', $currentLang)) ?>
         </p>
     </div>
 </div>
 
 <div class="policy-bar mono">
     <div>
-        <strong>Anti-Hoarding Policy:</strong>
-        STUDENT: max 1 node/job &amp; max 1 active/scheduled lease system-wide &bull;
-        RESEARCHER / ADMIN: max 3 nodes/job &bull;
-        Booking Horizon: 24-Hour Reservation Horizon
+        <strong><?= e(I18n::get('policy_title', $currentLang)) ?></strong>
+        <?= e(I18n::get('policy_summary', $currentLang)) ?>
     </div>
     <div>
         <?php if ($currentUser !== null): ?>
-            Active Role: <strong><?= e($currentUser['role']) ?></strong>
-            (<?= (int) $activeSystemLeaseCount ?><?= $maxConcurrentAllowed !== null ? '/' . $maxConcurrentAllowed : '' ?> active lease)
+            <?= e(I18n::get('policy_active_role', $currentLang)) ?> <strong><?= e(I18n::translateRole((string) $currentUser['role'], $currentLang)) ?></strong>
+            (<?= (int) $activeSystemLeaseCount ?><?= $maxConcurrentAllowed !== null ? '/' . $maxConcurrentAllowed : '' ?> <?= e(I18n::get('policy_active_lease', $currentLang)) ?>)
         <?php else: ?>
-            Browsing as Public Guest &mdash; <a href="/login">Sign in</a> for Researcher/Admin quotas
+            <?= e(I18n::get('policy_guest_prefix', $currentLang)) ?> <a href="/login"><?= e(I18n::get('policy_guest_signin', $currentLang)) ?></a> <?= e(I18n::get('policy_guest_suffix', $currentLang)) ?>
         <?php endif; ?>
     </div>
 </div>
 
 <?php if (isset($pveTelemetry)): ?>
+    <!-- PROXMOX VE HYPERVISOR TELEMETRY -->
     <section class="pve-banner mono <?= !empty($pveTelemetry['is_live']) ? 'pve-live' : 'pve-simulated' ?>">
         <div class="pve-banner-header">
             <div style="display:flex;align-items:center;gap:0.5rem;">
                 <span class="status-dot"></span>
-                <strong>PROXMOX VE HYPERVISOR TELEMETRY</strong>
+                <strong><?= e(I18n::get('pve_banner_title', $currentLang)) ?></strong>
                 <span class="badge <?= !empty($pveTelemetry['is_live']) ? 'badge-online' : 'badge-busy' ?>" style="font-size:0.68rem;">
-                    <span class="status-dot"></span><?= e($pveTelemetry['telemetry_source'] ?? $pveTelemetry['status_message']) ?>
+                    <span class="status-dot"></span><?= e(I18n::translateTelemetrySource((string) ($pveTelemetry['telemetry_source'] ?? $pveTelemetry['status_message']), $currentLang)) ?>
                 </span>
             </div>
             <div style="font-size:0.78rem;color:var(--fg-muted);">
-                Host: <code><?= e($proxmoxHost ?? 'https://192.168.1.200:8006') ?></code> &bull; Node: <strong><?= e($pveTelemetry['node_name'] ?? 'vor-server') ?></strong>
+                <?= e(I18n::get('pve_host_label', $currentLang)) ?> <code><?= e($proxmoxHost ?? 'https://192.168.1.200:8006') ?></code> &bull; <?= e(I18n::get('pve_node_label', $currentLang)) ?> <strong><?= e($pveTelemetry['node_name'] ?? 'vor-server') ?></strong>
             </div>
         </div>
         <div class="pve-banner-grid">
             <div class="pve-stat">
-                <span class="pve-label">CPU Hardware</span>
+                <span class="pve-label"><?= e(I18n::get('pve_cpu_hw', $currentLang)) ?></span>
                 <span class="pve-val"><?= e($pveTelemetry['cpu_model']) ?> (<?= (int) $pveTelemetry['cpu_cores'] ?>C/<?= (int) $pveTelemetry['cpu_threads'] ?>T)</span>
             </div>
             <div class="pve-stat">
-                <span class="pve-label">Live CPU Load</span>
+                <span class="pve-label"><?= e(I18n::get('pve_live_cpu', $currentLang)) ?></span>
                 <span class="pve-val"><?= number_format((float) $pveTelemetry['cpu_usage_pct'], 1) ?>%</span>
             </div>
             <div class="pve-stat">
-                <span class="pve-label">Physical RAM</span>
+                <span class="pve-label"><?= e(I18n::get('pve_phys_ram', $currentLang)) ?></span>
                 <span class="pve-val"><?= number_format((float) $pveTelemetry['ram_used_gb'], 1) ?> / <?= number_format((float) $pveTelemetry['ram_total_gb'], 1) ?> GB (<?= number_format((float) $pveTelemetry['ram_usage_pct'], 1) ?>%)</span>
             </div>
             <div class="pve-stat">
-                <span class="pve-label">Load Avg &amp; Uptime</span>
+                <span class="pve-label"><?= e(I18n::get('pve_load_uptime', $currentLang)) ?></span>
                 <span class="pve-val"><?= e($pveTelemetry['load_average']) ?> &bull; <?= e($pveTelemetry['uptime_formatted']) ?></span>
             </div>
             <div class="pve-stat">
-                <span class="pve-label">Running QEMU VMs</span>
-                <span class="pve-val"><?= (int) $pveTelemetry['running_vms'] ?> / <?= (int) $pveTelemetry['total_vms'] ?> VMs</span>
+                <span class="pve-label"><?= e(I18n::get('pve_running_vms', $currentLang)) ?></span>
+                <span class="pve-val"><?= (int) $pveTelemetry['running_vms'] ?> / <?= (int) $pveTelemetry['total_vms'] ?> <?= e(I18n::get('pve_vms_unit', $currentLang)) ?></span>
             </div>
         </div>
     </section>
@@ -80,33 +82,33 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
 
 <?php if (!empty($filterError)): ?>
     <div class="flash flash-error">
-        <span><?= e($filterError) ?> (Resetting preview window to current time).</span>
+        <span><?= e(I18n::translateServiceMessage((string) $filterError, $currentLang)) ?> <?= e(I18n::get('filter_reset_notice', $currentLang)) ?></span>
     </div>
 <?php endif; ?>
 
 <section class="panel">
     <div class="panel-title">
-        <span>Target Window &amp; Hardware Spec Filter</span>
+        <span><?= e(I18n::get('filter_panel_title', $currentLang)) ?></span>
         <span class="mono" style="font-weight:400;font-size:0.78rem;color:var(--fg-muted);">
-            Checking Window: <?= e($windowStart->format('Y-m-d H:i')) ?> &rarr; <?= e($windowEnd->format('Y-m-d H:i')) ?> (<?= (int) $previewHours ?>h)
+            <?= e(I18n::get('filter_checking_window', $currentLang)) ?> <?= e($windowStart->format('Y-m-d H:i')) ?> &rarr; <?= e($windowEnd->format('Y-m-d H:i')) ?> (<?= (int) $previewHours ?>h)
         </span>
     </div>
     <form method="GET" action="/" class="filter-grid">
         <div class="form-group">
-            <label class="form-label" for="start_time">Window Start (24-Hour Reservation Horizon)</label>
+            <label class="form-label" for="start_time"><?= e(I18n::get('filter_window_start', $currentLang)) ?></label>
             <input
                 type="datetime-local"
                 id="start_time"
                 name="start_time"
                 class="form-control"
                 value="<?= e($windowStart->format('Y-m-d\TH:i')) ?>"
-                min="<?= e($defaultStartStr) ?>"
+                min="<?= e($minStartStr ?? $defaultStartStr) ?>"
                 max="<?= e($maxHorizonStr) ?>"
             >
         </div>
 
         <div class="form-group">
-            <label class="form-label" for="hours">Duration Preview (Hours)</label>
+            <label class="form-label" for="hours"><?= e(I18n::get('filter_duration_preview', $currentLang)) ?></label>
             <input
                 type="number"
                 id="hours"
@@ -119,9 +121,17 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
         </div>
 
         <div class="form-group">
-            <label class="form-label" for="min_vram">Minimum VRAM (GB)</label>
+            <label class="form-label" for="min_vram"><?= e(I18n::get('filter_min_vram', $currentLang)) ?></label>
             <select id="min_vram" name="min_vram" class="form-control">
-                <?php foreach ([0 => 'Any VRAM (Include CPU)', 24 => '24 GB+ (RTX 4090 / Orin)', 48 => '48 GB+ (L40S / Orin 64)', 80 => '80 GB (A100 SXM4)'] as $vramVal => $vramLabel): ?>
+                <?php
+                $vramOptions = [
+                    0 => I18n::get('vram_opt_0', $currentLang),
+                    24 => I18n::get('vram_opt_24', $currentLang),
+                    48 => I18n::get('vram_opt_48', $currentLang),
+                    80 => I18n::get('vram_opt_80', $currentLang),
+                ];
+                foreach ($vramOptions as $vramVal => $vramLabel):
+                ?>
                     <option value="<?= $vramVal ?>" <?= (int) $minVram === $vramVal ? 'selected' : '' ?>>
                         <?= e($vramLabel) ?>
                     </option>
@@ -130,20 +140,20 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
         </div>
 
         <div class="form-group">
-            <label class="form-label" for="tier_id">Resource Tier</label>
+            <label class="form-label" for="tier_id"><?= e(I18n::get('filter_resource_tier', $currentLang)) ?></label>
             <select id="tier_id" name="tier_id" class="form-control">
-                <option value="">All Resource Tiers</option>
+                <option value=""><?= e(I18n::get('filter_all_tiers', $currentLang)) ?></option>
                 <?php foreach ($tiers as $tier): ?>
                     <option value="<?= (int) $tier['id'] ?>" <?= $selectedTierId === (int) $tier['id'] ? 'selected' : '' ?>>
-                        <?= e($tier['name']) ?> (Max <?= (int) $tier['max_allocation_hours'] ?>h)
+                        <?= e(I18n::translateTierName((string) ($tier['code'] ?? ''), (string) $tier['name'], $currentLang)) ?> (<?= e(I18n::format('filter_max_h', $currentLang, [(int) $tier['max_allocation_hours']])) ?>)
                     </option>
                 <?php endforeach; ?>
             </select>
         </div>
 
         <div class="form-group" style="display:flex;flex-direction:row;gap:0.5rem;">
-            <button type="submit" class="btn" style="flex:1;">Apply Window</button>
-            <a href="/" class="btn btn-outline">Reset</a>
+            <button type="submit" class="btn" style="flex:1;"><?= e(I18n::get('filter_apply_btn', $currentLang)) ?></button>
+            <a href="/" class="btn btn-outline"><?= e(I18n::get('filter_reset_btn', $currentLang)) ?></a>
         </div>
     </form>
 </section>
@@ -155,18 +165,19 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
     if ($tierNodes === []) {
         continue;
     }
+    $tierCode = (string) ($tier['code'] ?? '');
     $tierMaxHours = (int) $tier['max_allocation_hours'];
     $clampedHoursForTier = max(1, min((int) $previewHours, $tierMaxHours));
     ?>
     <section class="tier-section">
         <div class="tier-header">
             <div>
-                <h2 class="tier-name"><?= e($tier['name']) ?></h2>
-                <p style="font-size:0.84rem;color:var(--fg-secondary);"><?= e($tier['description']) ?></p>
+                <h2 class="tier-name"><?= e(I18n::translateTierName($tierCode, (string) $tier['name'], $currentLang)) ?></h2>
+                <p style="font-size:0.84rem;color:var(--fg-secondary);"><?= e(I18n::translateTierDescription($tierCode, (string) $tier['description'], $currentLang)) ?></p>
             </div>
             <span class="tier-meta">
-                Tier Code: <strong><?= e($tier['code']) ?></strong> &bull;
-                Max Lease Duration: <strong><?= $tierMaxHours ?>h</strong>
+                <?= e(I18n::get('tier_code_label', $currentLang)) ?> <strong><?= e($tierCode) ?></strong> &bull;
+                <?= e(I18n::get('tier_max_duration', $currentLang)) ?> <strong><?= $tierMaxHours ?>h</strong>
             </span>
         </div>
 
@@ -184,15 +195,15 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
 
                 if ($hwStatus !== 'ONLINE') {
                     $badgeClass = 'badge-maintenance';
-                    $badgeLabel = $hwStatus;
+                    $badgeLabel = I18n::translateStatus($hwStatus, $currentLang);
                     $canStage = false;
                 } elseif ($overlapCount > 0) {
                     $badgeClass = 'badge-busy';
-                    $badgeLabel = 'BUSY IN WINDOW';
+                    $badgeLabel = I18n::get('status_busy_window', $currentLang);
                     $canStage = false;
                 } else {
                     $badgeClass = 'badge-online';
-                    $badgeLabel = 'ONLINE // FREE';
+                    $badgeLabel = I18n::get('status_online_free', $currentLang);
                     $canStage = true;
                 }
                 ?>
@@ -208,19 +219,19 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
 
                         <div class="spec-list" style="margin-top:0.85rem;">
                             <div class="spec-item">
-                                <span>Accelerator / GPU</span>
-                                <strong><?= e($node['gpu_model'] ?? 'CPU-Only Node') ?></strong>
+                                <span><?= e(I18n::get('spec_accelerator', $currentLang)) ?></span>
+                                <strong><?= e($node['gpu_model'] ?? I18n::get('spec_cpu_only', $currentLang)) ?></strong>
                             </div>
                             <div class="spec-item">
-                                <span>VRAM / System RAM</span>
+                                <span><?= e(I18n::get('spec_vram_ram', $currentLang)) ?></span>
                                 <strong><?= (int) $node['vram_gb'] ?> GB VRAM / <?= $specRamGb ?> GB RAM</strong>
                             </div>
                             <div class="spec-item">
-                                <span>CPU Threads</span>
-                                <strong><?= (int) $node['cpu_cores'] ?> Cores</strong>
+                                <span><?= e(I18n::get('spec_cpu_threads', $currentLang)) ?></span>
+                                <strong><?= e(I18n::format('spec_cores_unit', $currentLang, [(int) $node['cpu_cores']])) ?></strong>
                             </div>
                             <div class="spec-item">
-                                <span>Burn Rate (Max <?= $tierMaxHours ?>h)</span>
+                                <span><?= e(I18n::format('spec_burn_rate', $currentLang, [$tierMaxHours])) ?></span>
                                 <strong><?= number_format($rate, 2) ?> CR / hr</strong>
                             </div>
                         </div>
@@ -228,7 +239,7 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
                         <div class="telemetry-block">
                             <div class="meter-row">
                                 <div class="meter-header">
-                                    <span>CPU Load</span>
+                                    <span><?= e(I18n::get('meter_cpu_load', $currentLang)) ?></span>
                                     <span class="mono font-bold"><?= number_format((float) $telemetry['cpu_usage_pct'], 1) ?>%</span>
                                 </div>
                                 <div class="meter-track">
@@ -237,7 +248,7 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
                             </div>
                             <div class="meter-row">
                                 <div class="meter-header">
-                                    <span>System RAM</span>
+                                    <span><?= e(I18n::get('meter_system_ram', $currentLang)) ?></span>
                                     <span class="mono font-bold"><?= number_format((float) $telemetry['ram_used_gb'], 1) ?> / <?= number_format((float) $telemetry['ram_total_gb'], 0) ?> GB (<?= number_format((float) $telemetry['ram_usage_pct'], 1) ?>%)</span>
                                 </div>
                                 <div class="meter-track">
@@ -246,8 +257,8 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
                             </div>
                             <div class="meter-row">
                                 <div class="meter-header">
-                                    <span>VRAM Allocation</span>
-                                    <span class="mono font-bold"><?= (int) $telemetry['vram_total_gb'] > 0 ? (number_format((float) $telemetry['vram_allocated_gb'], 1) . ' / ' . (int) $telemetry['vram_total_gb'] . ' GB (' . number_format((float) $telemetry['vram_usage_pct'], 1) . '%)') : 'N/A (CPU Node)' ?></span>
+                                    <span><?= e(I18n::get('meter_vram_alloc', $currentLang)) ?></span>
+                                    <span class="mono font-bold"><?= (int) $telemetry['vram_total_gb'] > 0 ? (number_format((float) $telemetry['vram_allocated_gb'], 1) . ' / ' . (int) $telemetry['vram_total_gb'] . ' GB (' . number_format((float) $telemetry['vram_usage_pct'], 1) . '%)') : e(I18n::get('meter_na_cpu', $currentLang)) ?></span>
                                 </div>
                                 <div class="meter-track">
                                     <div class="meter-fill meter-vram" style="width: <?= min(100, max(0, (float) $telemetry['vram_usage_pct'])) ?>%;"></div>
@@ -257,27 +268,27 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
 
                         <div class="availability-section">
                             <div class="availability-header">
-                                <span>24h Availability Horizon</span>
-                                <span class="mono" style="font-size:0.7rem;color:var(--fg-muted);">Now &rarr; +24h</span>
+                                <span><?= e(I18n::get('avail_horizon_label', $currentLang)) ?></span>
+                                <span class="mono" style="font-size:0.7rem;color:var(--fg-muted);"><?= e(I18n::get('avail_now_plus_24', $currentLang)) ?></span>
                             </div>
                             <div class="availability-strip" role="group" aria-label="24-hour availability">
                                 <?php foreach ($nodeAvailability[$nodeId] ?? [] as $slot): ?>
                                     <div
                                         class="availability-segment is-<?= e($slot['type'] ?? strtolower($slot['status'])) ?> <?= e($slot['class'] ?? '') ?>"
-                                        title="<?= e($slot['tooltip']) ?>"
+                                        title="<?= e(I18n::translateTooltip((string) $slot['tooltip'], $currentLang)) ?>"
                                     ></div>
                                 <?php endforeach; ?>
                             </div>
                             <div class="availability-legend">
-                                <span class="legend-item"><span class="legend-color is-free"></span> Free</span>
-                                <span class="legend-item"><span class="legend-color is-booked"></span> Booked</span>
-                                <span class="legend-item"><span class="legend-color is-maintenance"></span> Maintenance</span>
+                                <span class="legend-item"><span class="legend-color is-free"></span> <?= e(I18n::get('legend_free', $currentLang)) ?></span>
+                                <span class="legend-item"><span class="legend-color is-booked"></span> <?= e(I18n::get('legend_booked', $currentLang)) ?></span>
+                                <span class="legend-item"><span class="legend-color is-maintenance"></span> <?= e(I18n::get('legend_maintenance', $currentLang)) ?></span>
                             </div>
                         </div>
 
                         <?php if ($overlapCount > 0 && !empty($node['busy_until'])): ?>
                             <p class="mono" style="margin-top:0.6rem;font-size:0.76rem;color:var(--status-busy-fg);">
-                                Reserved in window until <?= e((string) $node['busy_until']) ?>
+                                <?= e(I18n::get('reserved_until_prefix', $currentLang)) ?> <?= e((string) $node['busy_until']) ?>
                             </p>
                         <?php endif; ?>
                     </div>
@@ -285,7 +296,7 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
                     <div class="node-card-footer">
                         <div class="mono">
                             <div style="font-size:0.72rem;color:var(--fg-muted);">
-                                Est. Window Cost (<?= $clampedHoursForTier ?>h)
+                                <?= e(I18n::format('est_window_cost', $currentLang, [$clampedHoursForTier])) ?>
                             </div>
                             <div style="font-size:0.95rem;font-weight:700;">
                                 <?= number_format($estimatedCost, 2) ?> CR
@@ -294,8 +305,8 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
 
                         <?php if ($isStaged): ?>
                             <div style="display:flex;gap:0.4rem;align-items:center;">
-                                <span class="badge badge-scheduled"><span class="status-dot"></span>STAGED (<?= (int) $stagedMap[$nodeId]['hours'] ?>h)</span>
-                                <a href="/tray" class="btn btn-outline btn-sm">Configure</a>
+                                <span class="badge badge-scheduled"><span class="status-dot"></span><?= e(I18n::get('status_staged', $currentLang)) ?> (<?= (int) $stagedMap[$nodeId]['hours'] ?>h)</span>
+                                <a href="/tray" class="btn btn-outline btn-sm"><?= e(I18n::get('btn_configure', $currentLang)) ?></a>
                             </div>
                         <?php elseif ($canStage): ?>
                             <form method="POST" action="/tray/add" style="display:flex;gap:0.4rem;align-items:center;">
@@ -310,12 +321,12 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
                                     value="<?= $clampedHoursForTier ?>"
                                     class="form-control"
                                     style="width:68px;padding:0.35rem 0.45rem;font-size:0.8rem;"
-                                    title="Hours (1 to <?= $tierMaxHours ?>h)"
+                                    title="<?= e(I18n::format('hours_input_title', $currentLang, [$tierMaxHours])) ?>"
                                 >
-                                <button type="submit" class="btn btn-sm">+ Stage Node</button>
+                                <button type="submit" class="btn btn-sm"><?= e(I18n::get('btn_stage_node', $currentLang)) ?></button>
                             </form>
                         <?php else: ?>
-                            <button type="button" class="btn btn-outline btn-sm" disabled>Unavailable</button>
+                            <button type="button" class="btn btn-outline btn-sm" disabled><?= e(I18n::get('btn_unavailable', $currentLang)) ?></button>
                         <?php endif; ?>
                     </div>
                 </article>
