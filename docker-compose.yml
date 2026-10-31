@@ -32,9 +32,20 @@ services:
       DB_NAME: vku_allocator
       DB_USER: vku_user
       DB_PASS: vku_password
+      TZ: Asia/Ho_Chi_Minh
       APP_TZ: Asia/Ho_Chi_Minh
+      ALLOCATOR_PUBLIC_HOST: "${ALLOCATOR_PUBLIC_HOST:-allocator.vku.udn.vn}"
+      ALLOCATOR_SHELL_URL: "${ALLOCATOR_SHELL_URL:-https://shell.vordenker.work}"
+      PROXMOX_HOST: "${PROXMOX_HOST:-https://192.168.1.200:8006}"
+      PROXMOX_NODE: "${PROXMOX_NODE:-vor-server}"
+      PROXMOX_TOKEN_ID: "${PROXMOX_TOKEN_ID:-}"
+      PROXMOX_TOKEN_SECRET: "${PROXMOX_TOKEN_SECRET:-}"
+      PROXMOX_LEASE_VMID: "${PROXMOX_LEASE_VMID:-200}"
+      PROXMOX_LEASE_GUEST_TYPE: "${PROXMOX_LEASE_GUEST_TYPE:-lxc}"
+      PROXMOX_HOST_VMID: "${PROXMOX_HOST_VMID:-100}"
+      PROXMOX_CLEAN_SNAPSHOT: "${PROXMOX_CLEAN_SNAPSHOT:-clean}"
     ports:
-      - "8080:80"
+      - "${APP_PORT:-8090}:80"
     volumes:
       - .:/var/www/html
     depends_on:

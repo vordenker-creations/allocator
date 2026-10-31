@@ -17,13 +17,8 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
     <div>
         <h1 class="page-title">Campus Compute &amp; Hardware Node Matrix</h1>
         <p class="page-subtitle">
-            Loop A: Inspect live cluster telemetry, filter by target time window (24h horizon) or VRAM, and stage hardware into your Job Spec Tray.
+            Inspect live cluster telemetry, filter by target time window (24-Hour Reservation Horizon) or VRAM, and stage hardware into your Job Spec Tray.
         </p>
-    </div>
-    <div>
-        <a href="/tray" class="btn">
-            Open Staging Tray (<?= (int) $hydratedTray['node_count'] ?> / <?= $maxNodesAllowed ?> Nodes &bull; <?= number_format((float) $hydratedTray['total_credits'], 2) ?> CR)
-        </a>
     </div>
 </div>
 
@@ -32,7 +27,7 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
         <strong>Anti-Hoarding Policy:</strong>
         STUDENT: max 1 node/job &amp; max 1 active/scheduled lease system-wide &bull;
         RESEARCHER / ADMIN: max 3 nodes/job &bull;
-        Booking Horizon: &le; 24h from NOW()
+        Booking Horizon: 24-Hour Reservation Horizon
     </div>
     <div>
         <?php if ($currentUser !== null): ?>
@@ -43,6 +38,45 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
         <?php endif; ?>
     </div>
 </div>
+
+<?php if (isset($pveTelemetry)): ?>
+    <section class="pve-banner mono <?= !empty($pveTelemetry['is_live']) ? 'pve-live' : 'pve-simulated' ?>">
+        <div class="pve-banner-header">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <span class="status-dot"></span>
+                <strong>PROXMOX VE HYPERVISOR TELEMETRY</strong>
+                <span class="badge <?= !empty($pveTelemetry['is_live']) ? 'badge-online' : 'badge-busy' ?>" style="font-size:0.68rem;">
+                    <span class="status-dot"></span><?= e($pveTelemetry['telemetry_source'] ?? $pveTelemetry['status_message']) ?>
+                </span>
+            </div>
+            <div style="font-size:0.78rem;color:var(--fg-muted);">
+                Host: <code><?= e($proxmoxHost ?? 'https://192.168.1.200:8006') ?></code> &bull; Node: <strong><?= e($pveTelemetry['node_name'] ?? 'vor-server') ?></strong>
+            </div>
+        </div>
+        <div class="pve-banner-grid">
+            <div class="pve-stat">
+                <span class="pve-label">CPU Hardware</span>
+                <span class="pve-val"><?= e($pveTelemetry['cpu_model']) ?> (<?= (int) $pveTelemetry['cpu_cores'] ?>C/<?= (int) $pveTelemetry['cpu_threads'] ?>T)</span>
+            </div>
+            <div class="pve-stat">
+                <span class="pve-label">Live CPU Load</span>
+                <span class="pve-val"><?= number_format((float) $pveTelemetry['cpu_usage_pct'], 1) ?>%</span>
+            </div>
+            <div class="pve-stat">
+                <span class="pve-label">Physical RAM</span>
+                <span class="pve-val"><?= number_format((float) $pveTelemetry['ram_used_gb'], 1) ?> / <?= number_format((float) $pveTelemetry['ram_total_gb'], 1) ?> GB (<?= number_format((float) $pveTelemetry['ram_usage_pct'], 1) ?>%)</span>
+            </div>
+            <div class="pve-stat">
+                <span class="pve-label">Load Avg &amp; Uptime</span>
+                <span class="pve-val"><?= e($pveTelemetry['load_average']) ?> &bull; <?= e($pveTelemetry['uptime_formatted']) ?></span>
+            </div>
+            <div class="pve-stat">
+                <span class="pve-label">Running QEMU VMs</span>
+                <span class="pve-val"><?= (int) $pveTelemetry['running_vms'] ?> / <?= (int) $pveTelemetry['total_vms'] ?> VMs</span>
+            </div>
+        </div>
+    </section>
+<?php endif; ?>
 
 <?php if (!empty($filterError)): ?>
     <div class="flash flash-error">
@@ -59,7 +93,7 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
     </div>
     <form method="GET" action="/" class="filter-grid">
         <div class="form-group">
-            <label class="form-label" for="start_time">Window Start (&le; 24h Horizon)</label>
+            <label class="form-label" for="start_time">Window Start (24-Hour Reservation Horizon)</label>
             <input
                 type="datetime-local"
                 id="start_time"
@@ -145,6 +179,8 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
                 $isStaged = isset($stagedMap[$nodeId]);
                 $rate = (float) $node['credits_per_hour'];
                 $estimatedCost = round($clampedHoursForTier * $rate, 2);
+                $telemetry = $nodeTelemetryMap[$nodeId] ?? \VKU\Allocator\Service\ProxmoxTelemetryService::simulateCampusNodeTelemetry($node, false);
+                $specRamGb = $node['hostname'] === 'vor-server' && isset($telemetry['ram_total_gb']) ? (int) $telemetry['ram_total_gb'] : (int) $node['ram_gb'];
 
                 if ($hwStatus !== 'ONLINE') {
                     $badgeClass = 'badge-maintenance';
@@ -167,7 +203,7 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
                                 <div class="node-hostname"><?= e($node['hostname']) ?></div>
                                 <div class="node-ip">IP: <?= e($node['ip_address']) ?> &bull; Node #<?= $nodeId ?></div>
                             </div>
-                            <span class="badge <?= $badgeClass ?>"><?= e($badgeLabel) ?></span>
+                            <span class="badge <?= $badgeClass ?>"><span class="status-dot"></span><?= e($badgeLabel) ?></span>
                         </div>
 
                         <div class="spec-list" style="margin-top:0.85rem;">
@@ -177,7 +213,7 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
                             </div>
                             <div class="spec-item">
                                 <span>VRAM / System RAM</span>
-                                <strong><?= (int) $node['vram_gb'] ?> GB VRAM / <?= (int) $node['ram_gb'] ?> GB RAM</strong>
+                                <strong><?= (int) $node['vram_gb'] ?> GB VRAM / <?= $specRamGb ?> GB RAM</strong>
                             </div>
                             <div class="spec-item">
                                 <span>CPU Threads</span>
@@ -186,6 +222,56 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
                             <div class="spec-item">
                                 <span>Burn Rate (Max <?= $tierMaxHours ?>h)</span>
                                 <strong><?= number_format($rate, 2) ?> CR / hr</strong>
+                            </div>
+                        </div>
+
+                        <div class="telemetry-block">
+                            <div class="meter-row">
+                                <div class="meter-header">
+                                    <span>CPU Load</span>
+                                    <span class="mono font-bold"><?= number_format((float) $telemetry['cpu_usage_pct'], 1) ?>%</span>
+                                </div>
+                                <div class="meter-track">
+                                    <div class="meter-fill meter-cpu" style="width: <?= min(100, max(0, (float) $telemetry['cpu_usage_pct'])) ?>%;"></div>
+                                </div>
+                            </div>
+                            <div class="meter-row">
+                                <div class="meter-header">
+                                    <span>System RAM</span>
+                                    <span class="mono font-bold"><?= number_format((float) $telemetry['ram_used_gb'], 1) ?> / <?= number_format((float) $telemetry['ram_total_gb'], 0) ?> GB (<?= number_format((float) $telemetry['ram_usage_pct'], 1) ?>%)</span>
+                                </div>
+                                <div class="meter-track">
+                                    <div class="meter-fill meter-ram" style="width: <?= min(100, max(0, (float) $telemetry['ram_usage_pct'])) ?>%;"></div>
+                                </div>
+                            </div>
+                            <div class="meter-row">
+                                <div class="meter-header">
+                                    <span>VRAM Allocation</span>
+                                    <span class="mono font-bold"><?= (int) $telemetry['vram_total_gb'] > 0 ? (number_format((float) $telemetry['vram_allocated_gb'], 1) . ' / ' . (int) $telemetry['vram_total_gb'] . ' GB (' . number_format((float) $telemetry['vram_usage_pct'], 1) . '%)') : 'N/A (CPU Node)' ?></span>
+                                </div>
+                                <div class="meter-track">
+                                    <div class="meter-fill meter-vram" style="width: <?= min(100, max(0, (float) $telemetry['vram_usage_pct'])) ?>%;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="availability-section">
+                            <div class="availability-header">
+                                <span>24h Availability Horizon</span>
+                                <span class="mono" style="font-size:0.7rem;color:var(--fg-muted);">Now &rarr; +24h</span>
+                            </div>
+                            <div class="availability-strip" role="group" aria-label="24-hour availability">
+                                <?php foreach ($nodeAvailability[$nodeId] ?? [] as $slot): ?>
+                                    <div
+                                        class="availability-segment is-<?= e($slot['type'] ?? strtolower($slot['status'])) ?> <?= e($slot['class'] ?? '') ?>"
+                                        title="<?= e($slot['tooltip']) ?>"
+                                    ></div>
+                                <?php endforeach; ?>
+                            </div>
+                            <div class="availability-legend">
+                                <span class="legend-item"><span class="legend-color is-free"></span> Free</span>
+                                <span class="legend-item"><span class="legend-color is-booked"></span> Booked</span>
+                                <span class="legend-item"><span class="legend-color is-maintenance"></span> Maintenance</span>
                             </div>
                         </div>
 
@@ -208,7 +294,7 @@ $maxConcurrentAllowed = $effectiveRole->maxConcurrentActiveLeases();
 
                         <?php if ($isStaged): ?>
                             <div style="display:flex;gap:0.4rem;align-items:center;">
-                                <span class="badge badge-scheduled">STAGED (<?= (int) $stagedMap[$nodeId]['hours'] ?>h)</span>
+                                <span class="badge badge-scheduled"><span class="status-dot"></span>STAGED (<?= (int) $stagedMap[$nodeId]['hours'] ?>h)</span>
                                 <a href="/tray" class="btn btn-outline btn-sm">Configure</a>
                             </div>
                         <?php elseif ($canStage): ?>

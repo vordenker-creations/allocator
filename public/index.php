@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
 
+date_default_timezone_set('Asia/Ho_Chi_Minh');
+
 use VKU\Allocator\Domain\Enum\NodeStatus;
 use VKU\Allocator\Domain\Enum\RuntimePreset;
 use VKU\Allocator\Domain\Enum\UserRole;
@@ -13,6 +15,8 @@ use VKU\Allocator\Repository\NodeRepository;
 use VKU\Allocator\Repository\UserRepository;
 use VKU\Allocator\Service\AuthService;
 use VKU\Allocator\Service\ProvisioningService;
+use VKU\Allocator\Service\ProxmoxLifecycleService;
+use VKU\Allocator\Service\ProxmoxTelemetryService;
 use VKU\Allocator\Service\SshKeyValidator;
 use VKU\Allocator\Service\StagingTrayService;
 
@@ -23,11 +27,12 @@ if (session_status() === PHP_SESSION_NONE) {
 $pdo = Database::getConnection();
 $nodeRepo = new NodeRepository($pdo);
 $userRepo = new UserRepository($pdo);
-$allocationRepo = new AllocationRepository($pdo);
+$lifecycleService = new ProxmoxLifecycleService();
+$allocationRepo = new AllocationRepository($pdo, $lifecycleService);
 
 $authService = new AuthService($userRepo);
 $trayService = new StagingTrayService($nodeRepo);
-$provisioningService = new ProvisioningService($pdo, $nodeRepo, $userRepo, $allocationRepo);
+$provisioningService = new ProvisioningService($pdo, $nodeRepo, $userRepo, $allocationRepo, $lifecycleService);
 
 // Synchronize temporal lease statuses (SCHEDULED -> ACTIVE -> EXPIRED)
 $allocationRepo->syncTemporalStatuses();
@@ -149,6 +154,34 @@ match ([$method, $route]) {
         $nodesByTier = [];
         foreach ($nodes as $node) {
             $nodesByTier[(int) $node['tier_id']][] = $node;
+        }
+
+        // Live Proxmox VE Telemetry & Campus Fleet Simulation
+        $proxmoxHost = (string) ($_ENV['PROXMOX_HOST'] ?? getenv('PROXMOX_HOST') ?: 'https://192.168.1.200:8006');
+        $proxmoxService = new ProxmoxTelemetryService();
+        $pveTelemetry = $proxmoxService->getNodeTelemetry();
+
+        $activeLeaseNodeIds = $nodeRepo->getActiveLeaseNodeIds($now);
+        $nodeAvailability = $nodeRepo->get24HourAvailability($now);
+
+        $nodeTelemetryMap = [];
+        foreach ($nodes as $node) {
+            $nid = (int) $node['id'];
+            $hostname = (string) $node['hostname'];
+            if ($hostname === 'vor-server') {
+                $nodeTelemetryMap[$nid] = [
+                    'cpu_usage_pct' => (float) $pveTelemetry['cpu_usage_pct'],
+                    'ram_used_gb' => (float) $pveTelemetry['ram_used_gb'],
+                    'ram_total_gb' => (float) $pveTelemetry['ram_total_gb'],
+                    'ram_usage_pct' => (float) $pveTelemetry['ram_usage_pct'],
+                    'vram_allocated_gb' => 0,
+                    'vram_total_gb' => 0,
+                    'vram_usage_pct' => 0.0,
+                ];
+            } else {
+                $hasActive = in_array($nid, $activeLeaseNodeIds, true);
+                $nodeTelemetryMap[$nid] = ProxmoxTelemetryService::simulateCampusNodeTelemetry($node, $hasActive);
+            }
         }
 
         $pageTitle = 'Node Matrix — VKU Allocator';
@@ -485,6 +518,36 @@ match ([$method, $route]) {
         }
 
         redirect('/admin');
+    })(),
+
+    // -------------------------------------------------------------------------
+    // Cryptographic Lease Shell Token Gatekeeper API (called by CT 200 ttyd)
+    // -------------------------------------------------------------------------
+    ['GET', '/api/verify-shell-token'] => (function () use ($allocationRepo): void {
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $token = (string) ($_GET['token'] ?? '');
+        $hostname = (string) ($_GET['hostname'] ?? 'vor-server');
+
+        $lease = $allocationRepo->verifyActiveShellToken($token, $hostname);
+        if ($lease === null) {
+            http_response_code(403);
+            echo json_encode([
+                'ok' => false,
+                'error' => 'Unauthorized: Token missing, expired, terminated, or not active for target node.',
+            ]);
+            return;
+        }
+
+        http_response_code(200);
+        echo json_encode([
+            'ok' => true,
+            'lease_id' => (int) $lease['lease_id'],
+            'student_code' => (string) $lease['student_code'],
+            'project_name' => (string) $lease['project_name'],
+            'hostname' => (string) $lease['hostname'],
+            'end_time' => (string) $lease['end_time'],
+        ]);
     })(),
 
     default => (function () use ($trayService, $currentUser): void {

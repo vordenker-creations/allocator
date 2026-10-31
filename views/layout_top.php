@@ -30,18 +30,18 @@ $trayCount = (int) ($hydratedTray['node_count'] ?? 0);
 
         <nav class="nav-links">
             <a href="/" class="nav-link <?= ($activeNav ?? '') === 'matrix' ? 'active' : '' ?>">
-                [A] Node Matrix
+                Node Matrix
             </a>
             <a href="/tray" class="nav-link <?= ($activeNav ?? '') === 'tray' ? 'active' : '' ?>">
-                [B] Staging Tray (<?= $trayCount ?>)
+                Staging Tray (<?= $trayCount ?>)
             </a>
             <?php if ($currentUser !== null): ?>
                 <a href="/console" class="nav-link <?= ($activeNav ?? '') === 'console' ? 'active' : '' ?>">
-                    [C/D] Console (<?= (int) ($activeSystemLeaseCount ?? 0) ?>)
+                    Active Console (<?= (int) ($activeSystemLeaseCount ?? 0) ?>)
                 </a>
                 <?php if (($currentUser['role'] ?? '') === 'ADMIN'): ?>
                     <a href="/admin" class="nav-link <?= ($activeNav ?? '') === 'admin' ? 'active' : '' ?>">
-                        [D] Cluster Admin
+                        Cluster Admin
                     </a>
                 <?php endif; ?>
             <?php endif; ?>

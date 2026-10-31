@@ -22,7 +22,7 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
     <div>
         <h1 class="page-title">Active Compute Console &amp; Lease Receipts</h1>
         <p class="page-subtitle">
-            Loop C &amp; D: Connect via ephemeral SSH tunnel, monitor live lease countdowns, or trigger early release for an automatic pro-rata credit refund.
+            Connect via ephemeral SSH tunnel, monitor live lease countdowns, or trigger early release for an automatic pro-rata credit refund.
         </p>
     </div>
     <div>
@@ -60,17 +60,19 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                 }
                 $estimatedRefund = round($unusedFullHours * $rate, 2);
 
+                $publicHost = $_ENV['ALLOCATOR_PUBLIC_HOST'] ?? getenv('ALLOCATOR_PUBLIC_HOST') ?: 'allocator.vku.udn.vn';
                 $sshCommand = sprintf(
-                    'ssh -p %d %s@allocator.vku.udn.vn',
+                    'ssh -p %d %s@%s',
                     (int) $lease['assigned_port'],
-                    $studentHandle
+                    $studentHandle,
+                    $publicHost
                 );
                 ?>
                 <div class="node-card" style="background-color:var(--bg-primary);border-color:var(--border-strong);">
                     <div class="node-card-top">
                         <div>
                             <span class="badge <?= $status === 'ACTIVE' ? 'badge-active' : 'badge-scheduled' ?>">
-                                <?= e($status) ?>
+                                <span class="status-dot"></span><?= e($status) ?>
                             </span>
                             <span class="mono" style="font-weight:700;font-size:1.05rem;margin-left:0.5rem;">
                                 <?= e($lease['hostname']) ?>
@@ -136,6 +138,50 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                         </div>
                     <?php endif; ?>
 
+                    <?php if ($status === 'ACTIVE' && strcasecmp((string) $lease['hostname'], 'vor-server') === 0): ?>
+                        <?php
+                        $shellBaseUrl = rtrim((string) ($_ENV['ALLOCATOR_SHELL_URL'] ?? getenv('ALLOCATOR_SHELL_URL') ?: 'https://shell.vordenker.work'), '/');
+                        $shellUrl = $shellBaseUrl . '/?arg=' . rawurlencode((string) $lease['access_token']);
+                        $terminalFrameId = 'web-terminal-frame-' . $leaseId;
+                        $terminalWrapId = 'web-terminal-wrap-' . $leaseId;
+                        ?>
+                        <div style="margin-top:0.5rem;border:1px solid var(--border-strong);background:var(--bg-elevated);padding:0.75rem 0.9rem;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                                <div class="mono" style="font-size:0.8rem;">
+                                    <span class="status-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--status-online-fg);margin-right:0.4rem;"></span>
+                                    <strong>vor-compute (CT 200) Browser Shell</strong>
+                                    <span style="color:var(--fg-muted);margin-left:0.35rem;">&bull; Token-Gated Ephemeral Alpine Session</span>
+                                </div>
+                                <div style="display:flex;gap:0.5rem;">
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm"
+                                        onclick="toggleWebTerminal(<?= e(json_encode($terminalWrapId)) ?>, <?= e(json_encode($terminalFrameId)) ?>, <?= e(json_encode($shellUrl)) ?>, this)"
+                                    >
+                                        Launch Web Terminal
+                                    </button>
+                                    <a
+                                        href="<?= e($shellUrl) ?>"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="btn btn-outline btn-sm"
+                                    >
+                                        Pop Out &nearr;
+                                    </a>
+                                </div>
+                            </div>
+                            <div id="<?= e($terminalWrapId) ?>" style="display:none;margin-top:0.75rem;border:1px solid var(--border-strong);background:#141413;">
+                                <iframe
+                                    id="<?= e($terminalFrameId) ?>"
+                                    src="about:blank"
+                                    style="width:100%;height:380px;border:0;display:block;background:#141413;"
+                                    allow="clipboard-read; clipboard-write"
+                                    title="vor-compute Live Web Terminal"
+                                ></iframe>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="node-card-footer">
                         <div class="mono" style="font-size:0.8rem;">
                             Locked Rate: <strong><?= number_format($rate, 2) ?> CR/h</strong> &bull;
@@ -196,7 +242,7 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                                 </td>
                                 <td>
                                     <span class="badge badge-<?= strtolower((string) $h['lease_status']) ?>">
-                                        <?= e($h['lease_status']) ?>
+                                        <span class="status-dot"></span><?= e($h['lease_status']) ?>
                                     </span>
                                 </td>
                                 <td class="mono"><?= number_format((float) $h['refunded_credits'], 2) ?> CR</td>
@@ -229,6 +275,23 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
 </div>
 
 <script>
+    function toggleWebTerminal(wrapId, frameId, url, btn) {
+        var wrap = document.getElementById(wrapId);
+        var frame = document.getElementById(frameId);
+        if (!wrap || !frame) return;
+
+        if (wrap.style.display === 'none') {
+            if (frame.getAttribute('src') === 'about:blank') {
+                frame.setAttribute('src', url);
+            }
+            wrap.style.display = 'block';
+            btn.textContent = 'Hide Web Terminal';
+        } else {
+            wrap.style.display = 'none';
+            btn.textContent = 'Launch Web Terminal';
+        }
+    }
+
     (function () {
         const timers = document.querySelectorAll('.live-countdown');
         if (!timers.length) return;

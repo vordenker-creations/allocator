@@ -6,11 +6,14 @@ namespace VKU\Allocator\Repository;
 
 use DateTimeImmutable;
 use PDO;
+use Throwable;
+use VKU\Allocator\Service\ProxmoxLifecycleService;
 
 final readonly class AllocationRepository
 {
     public function __construct(
         private PDO $pdo,
+        private ?ProxmoxLifecycleService $lifecycleService = null,
     ) {}
 
     /**
@@ -20,7 +23,18 @@ final readonly class AllocationRepository
     {
         $currentTs = ($now ?? new DateTimeImmutable())->format('Y-m-d H:i:s');
 
-        // 1. Flip leases whose end_time has passed to EXPIRED
+        // 1. Query candidate expiring leases joining compute_nodes
+        $expiringStmt = $this->pdo->prepare(
+            "SELECT al.id, n.hostname
+             FROM allocation_leases al
+             INNER JOIN compute_nodes n ON n.id = al.node_id
+             WHERE al.lease_status IN ('SCHEDULED', 'ACTIVE')
+               AND al.end_time <= :now_ts"
+        );
+        $expiringStmt->execute([':now_ts' => $currentTs]);
+        $expiringLeases = $expiringStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Flip leases whose end_time has passed to EXPIRED
         $expireStmt = $this->pdo->prepare(
             "UPDATE allocation_leases
              SET lease_status = 'EXPIRED'
@@ -29,7 +43,22 @@ final readonly class AllocationRepository
         );
         $expireStmt->execute([':now_ts' => $currentTs]);
 
-        // 2. Flip SCHEDULED leases whose start_time has arrived to ACTIVE
+        // 2. Query candidate activating scheduled leases joining compute_nodes
+        $activatingStmt = $this->pdo->prepare(
+            "SELECT al.id, n.hostname
+             FROM allocation_leases al
+             INNER JOIN compute_nodes n ON n.id = al.node_id
+             WHERE al.lease_status = 'SCHEDULED'
+               AND al.start_time <= :now_ts_1
+               AND al.end_time > :now_ts_2"
+        );
+        $activatingStmt->execute([
+            ':now_ts_1' => $currentTs,
+            ':now_ts_2' => $currentTs,
+        ]);
+        $activatingLeases = $activatingStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Flip SCHEDULED leases whose start_time has arrived to ACTIVE
         $activateStmt = $this->pdo->prepare(
             "UPDATE allocation_leases
              SET lease_status = 'ACTIVE'
@@ -41,6 +70,36 @@ final readonly class AllocationRepository
             ':now_ts_1' => $currentTs,
             ':now_ts_2' => $currentTs,
         ]);
+
+        if ($this->lifecycleService !== null) {
+            $hasVorServerExpired = false;
+            foreach ($expiringLeases as $l) {
+                if (strcasecmp((string) $l['hostname'], 'vor-server') === 0) {
+                    $hasVorServerExpired = true;
+                    break;
+                }
+            }
+            if ($hasVorServerExpired) {
+                try {
+                    $this->lifecycleService->stopGuest();
+                } catch (Throwable) {
+                }
+            }
+
+            $hasVorServerActivated = false;
+            foreach ($activatingLeases as $l) {
+                if (strcasecmp((string) $l['hostname'], 'vor-server') === 0) {
+                    $hasVorServerActivated = true;
+                    break;
+                }
+            }
+            if ($hasVorServerActivated) {
+                try {
+                    $this->lifecycleService->startGuest();
+                } catch (Throwable) {
+                }
+            }
+        }
     }
 
     /**
@@ -288,5 +347,55 @@ final readonly class AllocationRepository
         $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Verifies a 32-character hex access_token belongs to a currently ACTIVE lease on the target node.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function verifyActiveShellToken(
+        string $token,
+        string $hostname = 'vor-server',
+        ?DateTimeImmutable $now = null,
+    ): ?array {
+        $cleanToken = strtolower(trim($token));
+        if (preg_match('/^[a-f0-9]{32}$/', $cleanToken) !== 1) {
+            return null;
+        }
+
+        $currentTs = ($now ?? new DateTimeImmutable())->format('Y-m-d H:i:s');
+
+        $stmt = $this->pdo->prepare(
+            "SELECT
+                al.id AS lease_id,
+                al.allocation_id,
+                al.start_time,
+                al.end_time,
+                al.assigned_port,
+                al.lease_status,
+                a.project_name,
+                u.student_code,
+                n.hostname
+             FROM allocation_leases al
+             INNER JOIN allocations a ON a.id = al.allocation_id
+             INNER JOIN users u ON u.id = a.user_id
+             INNER JOIN compute_nodes n ON n.id = al.node_id
+             WHERE al.access_token = :token
+               AND al.lease_status = 'ACTIVE'
+               AND al.start_time <= :now_ts_1
+               AND al.end_time > :now_ts_2
+               AND LOWER(n.hostname) = LOWER(:hostname)
+             LIMIT 1"
+        );
+        $stmt->execute([
+            ':token' => $cleanToken,
+            ':now_ts_1' => $currentTs,
+            ':now_ts_2' => $currentTs,
+            ':hostname' => trim($hostname),
+        ]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row !== false ? $row : null;
     }
 }

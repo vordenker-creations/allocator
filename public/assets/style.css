@@ -187,6 +187,28 @@ code, pre, .mono {
     text-transform: uppercase;
 }
 
+@media (min-width: 1024px) {
+    .topbar-inner {
+        flex-wrap: nowrap;
+        gap: 1rem;
+    }
+    .brand {
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+    .nav-links {
+        flex-wrap: nowrap;
+        flex-shrink: 0;
+    }
+    .nav-link {
+        white-space: nowrap;
+    }
+    .topbar-meta {
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+}
+
 /* Main Container */
 .container {
     max-width: 1280px;
@@ -468,7 +490,9 @@ textarea.form-control {
 
 /* Status Badges */
 .badge {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     font-family: var(--font-mono);
     font-size: 0.72rem;
     font-weight: 700;
@@ -476,6 +500,51 @@ textarea.form-control {
     border: 1px solid transparent;
     text-transform: uppercase;
     letter-spacing: 0.03em;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.badge-online .status-dot,
+.badge-active .status-dot {
+    background-color: #10B981;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: pulse-green 2s infinite ease-in-out;
+}
+
+.badge-busy .status-dot,
+.badge-scheduled .status-dot {
+    background-color: #F59E0B;
+}
+
+.badge-maintenance .status-dot,
+.badge-offline .status-dot,
+.badge-cancelled .status-dot {
+    background-color: #EF4444;
+}
+
+.badge-expired .status-dot {
+    background-color: var(--fg-muted);
+}
+
+@keyframes pulse-green {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    70% {
+        transform: scale(1.15);
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
 }
 
 .badge-online, .badge-active {
@@ -589,4 +658,171 @@ th {
     color: var(--fg-muted);
     text-align: center;
     background-color: var(--bg-elevated);
+}
+
+/* Telemetry Block & 4px Progress Meters */
+.telemetry-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    margin-top: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+}
+
+.meter-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.meter-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--fg-secondary);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+}
+
+.meter-track {
+    height: 4px;
+    width: 100%;
+    background-color: var(--bg-subtle);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.meter-fill {
+    height: 100%;
+    border-radius: 2px;
+    background-color: var(--fg-primary);
+    transition: width 0.3s ease;
+}
+
+.meter-fill.meter-cpu, .meter-fill-cpu { background-color: #3B82F6; }
+.meter-fill.meter-ram, .meter-fill-ram { background-color: #10B981; }
+.meter-fill.meter-vram, .meter-fill-vram { background-color: #8B5CF6; }
+.meter-fill.meter-ok { background-color: #10B981; }
+.meter-fill.meter-warn { background-color: #F59E0B; }
+.meter-fill.meter-crit { background-color: #EF4444; }
+
+/* 24-Hour Availability Strip */
+.availability-section {
+    margin-top: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+}
+
+.availability-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.72rem;
+    color: var(--fg-secondary);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+}
+
+.availability-strip {
+    display: flex;
+    gap: 2px;
+    height: 12px;
+    width: 100%;
+    border-radius: 2px;
+    background-color: var(--bg-subtle);
+    padding: 2px;
+}
+
+.availability-segment {
+    flex: 1;
+    height: 100%;
+    border-radius: 1px;
+    cursor: pointer;
+    transition: transform 0.1s ease, filter 0.1s ease;
+}
+
+.availability-segment:hover {
+    transform: scaleY(1.3);
+    filter: brightness(1.15);
+    z-index: 2;
+}
+
+.availability-segment.is-free, .availability-segment.strip-slot-free { background-color: #10B981; }
+.availability-segment.is-booked, .availability-segment.strip-slot-booked { background-color: #F59E0B; }
+.availability-segment.is-maintenance, .availability-segment.strip-slot-maint { background-color: #EF4444; }
+
+.availability-legend {
+    display: flex;
+    gap: 0.75rem;
+    font-size: 0.68rem;
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    margin-top: 0.4rem;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.legend-color {
+    width: 8px;
+    height: 8px;
+    border-radius: 1px;
+    display: inline-block;
+}
+
+.legend-color.is-free { background-color: #10B981; }
+.legend-color.is-booked { background-color: #F59E0B; }
+.legend-color.is-maintenance { background-color: #EF4444; }
+
+/* Live Proxmox VE Telemetry Banner */
+.pve-banner {
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--border-strong);
+    padding: 0.9rem 1.15rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.82rem;
+}
+
+.pve-banner.pve-live { border-left-color: #10B981; }
+.pve-banner.pve-simulated { border-left-color: #F59E0B; }
+
+.pve-banner-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pve-banner-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.pve-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.pve-label {
+    font-size: 0.68rem;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+}
+
+.pve-val {
+    font-weight: 600;
 }

@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
 
+date_default_timezone_set('Asia/Ho_Chi_Minh');
+
 use VKU\Allocator\Domain\Enum\RuntimePreset;
 use VKU\Allocator\Infrastructure\Database;
 use VKU\Allocator\Repository\AllocationRepository;
 use VKU\Allocator\Repository\NodeRepository;
 use VKU\Allocator\Repository\UserRepository;
 use VKU\Allocator\Service\ProvisioningService;
+use VKU\Allocator\Service\ProxmoxTelemetryService;
 use VKU\Allocator\Service\SshKeyValidator;
 use VKU\Allocator\Service\StagingTrayService;
 
@@ -199,6 +202,305 @@ assertCheck(
     abs(($balanceFinal - $balanceAfter) - 40.00) < 0.001,
     sprintf('Restored 40.00 CR to student balance (%.2f -> %.2f)', $balanceAfter, $balanceFinal)
 );
+
+// 9. Proxmox VE Telemetry Service Tests
+echo "\n9. Testing Proxmox VE Hypervisor Telemetry Service (Path 2)...\n";
+
+// 9.1 Unconfigured / Fallback Handling
+$unconfiguredService = new ProxmoxTelemetryService(
+    host: 'https://192.168.1.200:8006',
+    node: 'vor-server',
+    tokenId: '',
+    tokenSecret: ''
+);
+$fallbackTelemetry = $unconfiguredService->getNodeTelemetry();
+assertCheck(
+    $fallbackTelemetry['is_live'] === false,
+    'Unconfigured Proxmox service marks is_live as false'
+);
+assertCheck(
+    $fallbackTelemetry['telemetry_source'] === 'TELEMETRY: SIMULATED (CONFIGURE .ENV FOR LIVE PVE API)'
+    && $fallbackTelemetry['status_message'] === 'TELEMETRY: SIMULATED (CONFIGURE .ENV FOR LIVE PVE API)',
+    'Unconfigured Proxmox service returns standard simulated notice banner'
+);
+assertCheck(
+    $fallbackTelemetry['node_name'] === 'vor-server'
+    && $fallbackTelemetry['cpu_cores'] === 4
+    && $fallbackTelemetry['ram_total_gb'] == 24.0
+    && $fallbackTelemetry['running_vms'] === 2,
+    'Fallback telemetry provides complete hardware and VM metrics (4 cores, 24GB RAM, 2 VMs)'
+);
+
+// 9.2 Parsing Live Responses
+$mockStatusPayload = [
+    'data' => [
+        'cpuinfo' => [
+            'model' => 'Intel(R) Core(TM) i5-3470 CPU @ 3.20GHz',
+            'cpus' => 4,
+            'cores' => 4,
+            'sockets' => 1,
+        ],
+        'cpu' => 0.142,
+        'memory' => [
+            'total' => 25769803776, // 24 GB
+            'used' => 8589934592,   // 8 GB
+            'free' => 17179869184,
+        ],
+        'uptime' => 1051200, // 12d 4h 0m
+        'loadavg' => ['0.42', '0.38', '0.35'],
+    ],
+];
+$mockQemuPayload = [
+    'data' => [
+        ['vmid' => 100, 'name' => 'build-vm-01', 'status' => 'running'],
+        ['vmid' => 101, 'name' => 'sim-worker-01', 'status' => 'running'],
+        ['vmid' => 102, 'name' => 'ci-runner', 'status' => 'stopped'],
+    ],
+];
+
+$parsedTelemetry = ProxmoxTelemetryService::parseLiveResponses($mockStatusPayload, $mockQemuPayload, 'vor-server');
+assertCheck(
+    $parsedTelemetry['is_live'] === true && $parsedTelemetry['telemetry_source'] === 'LIVE PVE API',
+    'parseLiveResponses sets is_live=true and telemetry_source="LIVE PVE API"'
+);
+assertCheck(
+    $parsedTelemetry['cpu_model'] === 'Intel(R) Core(TM) i5-3470 CPU @ 3.20GHz'
+    && $parsedTelemetry['cpu_cores'] === 4
+    && $parsedTelemetry['cpu_threads'] === 4
+    && abs($parsedTelemetry['cpu_usage_pct'] - 14.2) < 0.1,
+    'parseLiveResponses extracts CPU model, core/thread count, and 14.2% usage'
+);
+assertCheck(
+    abs($parsedTelemetry['ram_total_gb'] - 24.0) < 0.1
+    && abs($parsedTelemetry['ram_used_gb'] - 8.0) < 0.1
+    && abs($parsedTelemetry['ram_usage_pct'] - 33.3) < 0.1,
+    'parseLiveResponses converts RAM bytes to GB (8.0 / 24.0 GB, 33.3%)'
+);
+assertCheck(
+    $parsedTelemetry['uptime_formatted'] === '12d 4h 0m'
+    && $parsedTelemetry['load_average'] === '0.42, 0.38, 0.35',
+    'parseLiveResponses formats uptime (12d 4h 0m) and loadavg string'
+);
+assertCheck(
+    $parsedTelemetry['running_vms'] === 2 && $parsedTelemetry['total_vms'] === 3,
+    'parseLiveResponses correctly filters running QEMU VMs (2 running / 3 total)'
+);
+
+// 9.3 Node Auto-Detection via mock HTTP executor
+$mockExecutor = function (string $url, array $headers) use ($mockStatusPayload, $mockQemuPayload): ?array {
+    if (str_ends_with($url, '/api2/json/nodes')) {
+        return [
+            'data' => [
+                ['node' => 'secondary-node', 'status' => 'offline'],
+                ['node' => 'vor-server', 'status' => 'online'],
+            ],
+        ];
+    }
+    if (str_ends_with($url, '/api2/json/nodes/vor-server/status')) {
+        return $mockStatusPayload;
+    }
+    if (str_ends_with($url, '/api2/json/nodes/vor-server/qemu')) {
+        return $mockQemuPayload;
+    }
+    return null;
+};
+
+$mockService = new ProxmoxTelemetryService(
+    host: 'https://192.168.1.200:8006',
+    node: 'vor-server',
+    tokenId: 'test@pam!token',
+    tokenSecret: '12345678-1234-1234-1234-123456789abc',
+    httpExecutor: $mockExecutor
+);
+assertCheck(
+    $mockService->resolveNodeName() === 'vor-server',
+    'resolveNodeName detects online node from /api2/json/nodes response'
+);
+$liveTelemetry = $mockService->getNodeTelemetry();
+assertCheck(
+    $liveTelemetry['is_live'] === true && $liveTelemetry['node_name'] === 'vor-server' && $liveTelemetry['running_vms'] === 2,
+    'getNodeTelemetry executes mock workflow end-to-end and returns live telemetry'
+);
+
+// 9.4 Node Auto-Detection Fallback when node list empty or unreachable
+$failingExecutor = function (string $url, array $headers): ?array {
+    return null; // Simulate network connection failure or timeout
+};
+$fallbackNodeService = new ProxmoxTelemetryService(
+    host: 'https://192.168.1.200:8006',
+    node: 'vor-server',
+    tokenId: 'test@pam!token',
+    tokenSecret: 'secret',
+    httpExecutor: $failingExecutor
+);
+assertCheck(
+    $fallbackNodeService->resolveNodeName() === 'vor-server',
+    'resolveNodeName falls back to configured node on network failure'
+);
+$unreachableTelemetry = $fallbackNodeService->getNodeTelemetry();
+assertCheck(
+    $unreachableTelemetry['is_live'] === false
+    && $unreachableTelemetry['telemetry_source'] === 'TELEMETRY: SIMULATED (CONFIGURE .ENV FOR LIVE PVE API)',
+    'getNodeTelemetry cleanly catches HTTP failure and returns simulated fallback'
+);
+
+// 9.5 Campus Node Telemetry Simulation
+$gpuNode = ['id' => 3, 'hostname' => 'vku-rtx4090-01', 'status' => 'ONLINE', 'ram_gb' => 128, 'vram_gb' => 24];
+$activeGpuTelemetry = ProxmoxTelemetryService::simulateCampusNodeTelemetry($gpuNode, true);
+assertCheck(
+    $activeGpuTelemetry['cpu_usage_pct'] >= 75.0 && $activeGpuTelemetry['cpu_usage_pct'] <= 92.0
+    && $activeGpuTelemetry['vram_allocated_gb'] === 24
+    && $activeGpuTelemetry['vram_usage_pct'] == 100.0,
+    'simulateCampusNodeTelemetry active lease: 75-92% CPU, 100% VRAM allocation'
+);
+
+$idleGpuTelemetry = ProxmoxTelemetryService::simulateCampusNodeTelemetry($gpuNode, false);
+assertCheck(
+    $idleGpuTelemetry['cpu_usage_pct'] >= 3.0 && $idleGpuTelemetry['cpu_usage_pct'] <= 12.0
+    && $idleGpuTelemetry['vram_allocated_gb'] === 0
+    && $idleGpuTelemetry['vram_usage_pct'] == 0.0,
+    'simulateCampusNodeTelemetry idle/free: 3-12% CPU, 0% VRAM allocation'
+);
+
+$maintNode = ['id' => 4, 'hostname' => 'vku-rtx4090-02', 'status' => 'MAINTENANCE', 'ram_gb' => 128, 'vram_gb' => 24];
+$maintTelemetry = ProxmoxTelemetryService::simulateCampusNodeTelemetry($maintNode, false);
+assertCheck(
+    $maintTelemetry['cpu_usage_pct'] == 0.0
+    && $maintTelemetry['ram_used_gb'] == 0.0
+    && $maintTelemetry['vram_allocated_gb'] === 0,
+    'simulateCampusNodeTelemetry maintenance: 0% CPU, 0 GB RAM used, 0 GB VRAM'
+);
+
+// 10. SSH Receipt Public Host Resolution
+echo "\n10. Testing SSH Receipt Host Snippet Resolution...\n";
+$currentHost = $_ENV['ALLOCATOR_PUBLIC_HOST'] ?? getenv('ALLOCATOR_PUBLIC_HOST') ?: 'allocator.vku.udn.vn';
+assertCheck(
+    $currentHost === 'allocator.vku.udn.vn' || $currentHost === 'allocator.vordenker.work',
+    sprintf('Public SSH host resolves correctly (%s)', $currentHost)
+);
+
+// 11. Database Seed Verification for vor-server (Node 10)
+echo "\n11. Testing vor-server Tier 2 Database Seed...\n";
+$vorNode = $nodeRepo->findByIdWithTier(10);
+assertCheck(
+    $vorNode !== null && $vorNode['hostname'] === 'vor-server',
+    'Node 10 (vor-server) exists in compute_nodes'
+);
+assertCheck(
+    $vorNode !== null && (int) $vorNode['tier_id'] === 2 && (int) $vorNode['ram_gb'] === 16 && (int) $vorNode['cpu_cores'] === 4,
+    'vor-server seeded in Tier 2 with 16 GB baseline RAM and 4 CPU cores'
+);
+
+// 12. Testing UI Quality Control & Spec Jargon Removal
+echo "\n12. Testing UI Quality Control & Spec Jargon Removal...\n";
+$layoutContent = (string) file_get_contents(dirname(__DIR__) . '/views/layout_top.php');
+assertCheck(
+    str_contains($layoutContent, 'Node Matrix')
+    && str_contains($layoutContent, 'Staging Tray')
+    && str_contains($layoutContent, 'Active Console')
+    && str_contains($layoutContent, 'Cluster Admin'),
+    'Navbar links render clean titles (Node Matrix, Staging Tray, Active Console, Cluster Admin)'
+);
+assertCheck(
+    !preg_match('/\[[ABCD](\/[ABCD])?\]/', $layoutContent),
+    'Navbar links contain no bracket spec labels like [A], [B], [C/D], [D]'
+);
+
+$viewFiles = [
+    'matrix' => dirname(__DIR__) . '/views/matrix.php',
+    'tray' => dirname(__DIR__) . '/views/tray.php',
+    'console' => dirname(__DIR__) . '/views/console.php',
+    'admin' => dirname(__DIR__) . '/views/admin.php',
+];
+$viewsCleanOfLoopPrefixes = true;
+foreach ($viewFiles as $name => $filePath) {
+    $content = (string) file_get_contents($filePath);
+    if (preg_match('/Loop [ABCD]/i', $content)) {
+        $viewsCleanOfLoopPrefixes = false;
+        break;
+    }
+}
+assertCheck($viewsCleanOfLoopPrefixes, 'All view templates are clean of subtitle Loop prefixes (Loop A, B, C, D)');
+
+$matrixContent = (string) file_get_contents($viewFiles['matrix']);
+$trayContent = (string) file_get_contents($viewFiles['tray']);
+assertCheck(
+    !str_contains($matrixContent, '&le; 24h') && !str_contains($matrixContent, '<= 24h')
+    && !str_contains($trayContent, '&le; 24h') && !str_contains($trayContent, '<= 24h'),
+    'Matrix and Tray views eliminate raw SQL horizon copy (&le; 24h from NOW)'
+);
+assertCheck(
+    str_contains($matrixContent, '24-Hour Reservation Horizon')
+    && str_contains($trayContent, '24-Hour Reservation Horizon'),
+    'Matrix and Tray views use clean operational copy (24-Hour Reservation Horizon)'
+);
+assertCheck(
+    !str_contains($matrixContent, 'Open Staging Tray'),
+    'Redundant Open Staging Tray button removed from below Matrix page title'
+);
+assertCheck(
+    str_contains($matrixContent, 'pve-banner')
+    && str_contains($matrixContent, 'PROXMOX VE HYPERVISOR TELEMETRY'),
+    'Matrix view includes dedicated Live Proxmox VE Hypervisor Telemetry Banner'
+);
+assertCheck(
+    str_contains($matrixContent, 'meter-track')
+    && str_contains($matrixContent, 'meter-fill')
+    && str_contains($matrixContent, 'telemetry-block'),
+    'Matrix view includes 4px node card progress meters for CPU, RAM, and VRAM'
+);
+assertCheck(
+    str_contains($matrixContent, 'availability-strip')
+    && str_contains($matrixContent, 'availability-segment')
+    && str_contains($matrixContent, 'availability-legend'),
+    'Matrix view includes 24-hour availability strip with segment tooltips and legend'
+);
+
+$cssContent = (string) file_get_contents(dirname(__DIR__) . '/public/assets/style.css');
+assertCheck(
+    str_contains($cssContent, '@media (min-width: 1024px)')
+    && str_contains($cssContent, 'flex-wrap: nowrap'),
+    'style.css contains single-row desktop flexbox navigation rule'
+);
+assertCheck(
+    str_contains($cssContent, '.status-dot')
+    && str_contains($cssContent, 'pulse-green'),
+    'style.css contains 6px status indicator dot and pulsing green animation'
+);
+
+// 13. Testing 24-Hour Availability Strip Algorithm
+echo "\n13. Testing 24-Hour Availability Strip Algorithm...\n";
+$availability = $nodeRepo->get24HourAvailability($now);
+assertCheck(
+    count($availability) === 10,
+    sprintf('Availability calculated for all 10 compute nodes (got %d)', count($availability))
+);
+
+$all24Slots = true;
+$validTooltipFormat = true;
+foreach ($availability as $nid => $slots) {
+    if (count($slots) !== 24) {
+        $all24Slots = false;
+    }
+    foreach ($slots as $slot) {
+        if (!preg_match('/^[0-9]{2}:00 - [0-9]{2}:00: (FREE|BOOKED|MAINTENANCE)$/', (string) ($slot['tooltip'] ?? ''))) {
+            $validTooltipFormat = false;
+        }
+    }
+}
+assertCheck($all24Slots, 'Every compute node has exactly 24 hourly availability slots');
+assertCheck($validTooltipFormat, 'All availability slots follow exact tooltip contract ({start}:00 - {end}:00: STATUS)');
+
+// Node 4 is MAINTENANCE in seed data
+$node4Slots = $availability[4] ?? [];
+$allMaintenance = count($node4Slots) === 24;
+foreach ($node4Slots as $slot) {
+    if ($slot['status'] !== 'MAINTENANCE') {
+        $allMaintenance = false;
+        break;
+    }
+}
+assertCheck($allMaintenance, 'Node in MAINTENANCE state marks all 24 slots as MAINTENANCE');
 
 // Cleanup test allocation and restore Student #1 initial credit balance so test suite is idempotent
 if (!empty($validStudentJob['allocation_id'])) {

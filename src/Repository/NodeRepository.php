@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace VKU\Allocator\Repository;
 
 use DateTimeImmutable;
+use DateTimeZone;
 use PDO;
 use VKU\Allocator\Domain\Enum\NodeStatus;
 
@@ -211,5 +212,109 @@ final readonly class NodeRepository
             ':status' => $status->value,
         ]);
         return (int) $this->pdo->lastInsertId();
+    }
+
+    /**
+     * Returns an array of node IDs that currently have an active lease.
+     *
+     * @return list<int>
+     */
+    public function getActiveLeaseNodeIds(?DateTimeImmutable $now = null): array
+    {
+        $tz = new DateTimeZone('Asia/Ho_Chi_Minh');
+        $currentTs = ($now ?? new DateTimeImmutable('now', $tz))->format('Y-m-d H:i:s');
+        $stmt = $this->pdo->prepare(
+            "SELECT DISTINCT node_id
+             FROM allocation_leases
+             WHERE lease_status = 'ACTIVE'
+                OR (lease_status = 'SCHEDULED' AND start_time <= :now_1 AND end_time > :now_2)"
+        );
+        $stmt->execute([':now_1' => $currentTs, ':now_2' => $currentTs]);
+        return array_values(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)));
+    }
+
+    /**
+     * Generates 24 consecutive 1-hour availability slots starting from the current hour
+     * in Asia/Ho_Chi_Minh timezone for each node.
+     *
+     * @return array<int, list<array{slot_start: string, slot_end: string, status: string, type: string, class: string, tooltip: string}>>
+     */
+    public function get24HourAvailability(?DateTimeImmutable $now = null): array
+    {
+        $tz = new DateTimeZone('Asia/Ho_Chi_Minh');
+        $anchor = $now !== null ? $now->setTimezone($tz) : new DateTimeImmutable('now', $tz);
+        $startHour = $anchor->setTime((int) $anchor->format('H'), 0, 0);
+        $horizonEnd = $startHour->modify('+24 hours');
+
+        $stmtNodes = $this->pdo->query('SELECT id, status FROM compute_nodes ORDER BY id ASC');
+        $allNodes = $stmtNodes->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmtLeases = $this->pdo->prepare(
+            "SELECT node_id, start_time, end_time
+             FROM allocation_leases
+             WHERE lease_status IN ('SCHEDULED', 'ACTIVE')
+               AND start_time < :horizon_end
+               AND end_time > :horizon_start"
+        );
+        $stmtLeases->execute([
+            ':horizon_start' => $startHour->format('Y-m-d H:i:s'),
+            ':horizon_end' => $horizonEnd->format('Y-m-d H:i:s'),
+        ]);
+        $leases = $stmtLeases->fetchAll(PDO::FETCH_ASSOC);
+
+        $leasesByNode = [];
+        foreach ($leases as $lease) {
+            $nid = (int) $lease['node_id'];
+            $leasesByNode[$nid][] = [
+                'start' => new DateTimeImmutable((string) $lease['start_time'], $tz),
+                'end' => new DateTimeImmutable((string) $lease['end_time'], $tz),
+            ];
+        }
+
+        $result = [];
+        foreach ($allNodes as $nodeRow) {
+            $nid = (int) $nodeRow['id'];
+            $isOnline = ($nodeRow['status'] ?? '') === 'ONLINE';
+            $nodeLeases = $leasesByNode[$nid] ?? [];
+
+            $slots = [];
+            for ($h = 0; $h < 24; $h++) {
+                $slotStart = $startHour->modify(sprintf('+%d hours', $h));
+                $slotEnd = $slotStart->modify('+1 hour');
+
+                if (!$isOnline) {
+                    $status = 'MAINTENANCE';
+                    $cssClass = 'strip-slot-maint is-maintenance';
+                } else {
+                    $isBooked = false;
+                    foreach ($nodeLeases as $l) {
+                        if ($l['start'] < $slotEnd && $l['end'] > $slotStart) {
+                            $isBooked = true;
+                            break;
+                        }
+                    }
+                    if ($isBooked) {
+                        $status = 'BOOKED';
+                        $cssClass = 'strip-slot-booked is-booked';
+                    } else {
+                        $status = 'FREE';
+                        $cssClass = 'strip-slot-free is-free';
+                    }
+                }
+
+                $tooltip = sprintf('%s - %s: %s', $slotStart->format('H:i'), $slotEnd->format('H:i'), $status);
+                $slots[] = [
+                    'slot_start' => $slotStart->format('H:i'),
+                    'slot_end' => $slotEnd->format('H:i'),
+                    'status' => $status,
+                    'type' => strtolower($status),
+                    'class' => $cssClass,
+                    'tooltip' => $tooltip,
+                ];
+            }
+            $result[$nid] = $slots;
+        }
+
+        return $result;
     }
 }

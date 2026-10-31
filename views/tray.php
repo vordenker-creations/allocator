@@ -16,7 +16,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
     <div>
         <h1 class="page-title">Job Spec Staging Tray</h1>
         <p class="page-subtitle">
-            Loop B &amp; C: Configure runtime environment, job start time (&le; 24h horizon), per-node duration, and commit an atomic SQL reservation.
+            Configure runtime environment, job start time (24-Hour Reservation Horizon), per-node duration, and commit an atomic reservation.
         </p>
     </div>
     <div style="display:flex;gap:0.5rem;">
@@ -139,7 +139,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="start_time">Job-Wide Start Time (&le; 24h from NOW)</label>
+                            <label class="form-label" for="start_time">Job-Wide Start Time (24-Hour Reservation Horizon)</label>
                             <input
                                 type="datetime-local"
                                 id="start_time"
@@ -219,7 +219,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
             </div>
             <div class="summary-row">
                 <span>Booking Horizon</span>
-                <strong>Valid (&le; 24h)</strong>
+                <strong>Valid (24-Hour Horizon)</strong>
             </div>
 
             <?php if ($currentUser !== null): ?>

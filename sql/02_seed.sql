@@ -23,7 +23,8 @@ INSERT INTO compute_nodes (id, tier_id, hostname, ip_address, gpu_model, vram_gb
 (6, 2, 'vku-epyc-build-01', '10.20.20.11', NULL, 0, 256, 128, 12.00, 'ONLINE'),
 (7, 2, 'vku-epyc-build-02', '10.20.20.12', NULL, 0, 128, 64, 8.00, 'ONLINE'),
 (8, 3, 'vku-jetson-orin-01', '10.20.30.11', 'NVIDIA Ampere Orin 64GB (Unified)', 64, 64, 12, 6.00, 'ONLINE'),
-(9, 3, 'vku-jetson-orin-02', '10.20.30.12', 'NVIDIA Ampere Orin 32GB (Unified)', 32, 32, 8, 4.00, 'ONLINE');
+(9, 3, 'vku-jetson-orin-02', '10.20.30.12', 'NVIDIA Ampere Orin 32GB (Unified)', 32, 32, 8, 4.00, 'ONLINE'),
+(10, 2, 'vor-server', '192.168.1.200', 'Intel Core i5-3470 (4C/4T @ 3.20GHz) • Proxmox VE Host', 0, 16, 4, 5.00, 'ONLINE');
 
 -- 3. Seed Users
 -- Password for all seeded accounts is: vku2026

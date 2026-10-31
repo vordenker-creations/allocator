@@ -8,7 +8,7 @@ require __DIR__ . '/layout_top.php';
     <div>
         <h1 class="page-title">HPC Cluster Administration &amp; Override Console</h1>
         <p class="page-subtitle">
-            Loop D: Manage compute node operational states, register new hardware nodes, adjust student credit quotas, and audit cluster-wide leases.
+            Manage compute node operational states, register new hardware nodes, adjust student credit quotas, and audit cluster-wide leases.
         </p>
     </div>
 </div>
@@ -51,7 +51,7 @@ require __DIR__ . '/layout_top.php';
                             </td>
                             <td class="mono"><?= number_format((float) $node['credits_per_hour'], 2) ?> CR/h</td>
                             <td>
-                                <span class="badge badge-<?= strtolower($st) ?>"><?= e($st) ?></span>
+                                <span class="badge badge-<?= strtolower($st) ?>"><span class="status-dot"></span><?= e($st) ?></span>
                             </td>
                             <td>
                                 <form method="POST" action="/admin/node/status" style="display:flex;gap:0.35rem;">
@@ -211,7 +211,7 @@ require __DIR__ . '/layout_top.php';
                             <?php endif; ?>
                         </td>
                         <td>
-                            <span class="badge badge-<?= strtolower($lStatus) ?>"><?= e($lStatus) ?></span>
+                            <span class="badge badge-<?= strtolower($lStatus) ?>"><span class="status-dot"></span><?= e($lStatus) ?></span>
                         </td>
                         <td>
                             <?php if (in_array($lStatus, ['ACTIVE', 'SCHEDULED'], true)): ?>

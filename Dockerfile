@@ -4,11 +4,13 @@ FROM php:8.4-apache
 RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     git \
-    && docker-php-ext-install pdo pdo_mysql opcache \
+    libcurl4-openssl-dev \
+    && docker-php-ext-install pdo pdo_mysql opcache curl \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
 
 # Set timezone to Asia/Ho_Chi_Minh
+ENV TZ=Asia/Ho_Chi_Minh
 RUN printf "date.timezone = Asia/Ho_Chi_Minh\n" > /usr/local/etc/php/conf.d/timezone.ini
 
 # Configure Apache DocumentRoot to /var/www/html/public

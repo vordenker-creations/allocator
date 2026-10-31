@@ -14,6 +14,7 @@ use VKU\Allocator\Domain\Enum\UserRole;
 use VKU\Allocator\Repository\AllocationRepository;
 use VKU\Allocator\Repository\NodeRepository;
 use VKU\Allocator\Repository\UserRepository;
+use VKU\Allocator\Service\ProxmoxLifecycleService;
 
 final readonly class ProvisioningService
 {
@@ -22,6 +23,7 @@ final readonly class ProvisioningService
         private NodeRepository $nodeRepository,
         private UserRepository $userRepository,
         private AllocationRepository $allocationRepository,
+        private ?ProxmoxLifecycleService $lifecycleService = null,
     ) {}
 
     /**
@@ -272,6 +274,18 @@ final readonly class ProvisioningService
 
             $this->pdo->commit();
 
+            if ($this->lifecycleService !== null && $initialStatus === LeaseStatus::Active->value) {
+                foreach ($createdLeases as $leaseItem) {
+                    if (strcasecmp((string) $leaseItem['hostname'], 'vor-server') === 0) {
+                        try {
+                            $this->lifecycleService->startGuest();
+                        } catch (Throwable) {
+                        }
+                        break;
+                    }
+                }
+            }
+
             return [
                 'ok' => true,
                 'allocation_id' => $allocationId,
@@ -355,6 +369,13 @@ final readonly class ProvisioningService
             }
 
             $this->pdo->commit();
+
+            if ($this->lifecycleService !== null && strcasecmp((string) $lease['hostname'], 'vor-server') === 0) {
+                try {
+                    $this->lifecycleService->stopGuest();
+                } catch (Throwable) {
+                }
+            }
 
             return [
                 'ok' => true,
