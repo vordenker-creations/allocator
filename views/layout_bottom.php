@@ -17,6 +17,34 @@
         }
     })();
 
+    (function () {
+        const langBtn = document.getElementById('lang-toggle');
+        if (langBtn) {
+            langBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = langBtn.getAttribute('data-lang') || (document.documentElement.getAttribute('lang') === 'vi' ? 'en' : 'vi');
+                document.cookie = 'vku_lang=' + target + '; path=/; max-age=31536000; SameSite=Lax';
+                document.cookie = 'lang=' + target + '; path=/; max-age=31536000; SameSite=Lax';
+                let returnPath = window.location.pathname;
+                try {
+                    const searchParams = new URLSearchParams(window.location.search);
+                    searchParams.delete('lang');
+                    const q = searchParams.toString();
+                    if (q) returnPath += '?' + q;
+                } catch (_) {
+                    returnPath += window.location.search;
+                }
+                if (window.location.hash) {
+                    returnPath += window.location.hash;
+                }
+                if (returnPath.startsWith('/lang') || returnPath.startsWith('/set-lang') || returnPath.startsWith('/locale')) {
+                    returnPath = '/';
+                }
+                window.location.href = '/lang?lang=' + target + '&return_to=' + encodeURIComponent(returnPath);
+            });
+        }
+    })();
+
     function copyTextToClipboard(text, buttonEl) {
         if (!navigator.clipboard) return;
         navigator.clipboard.writeText(text).then(function () {

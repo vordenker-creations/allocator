@@ -114,9 +114,21 @@ code, pre, .mono {
 
 .brand {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.65rem;
     text-decoration: none;
+    color: var(--fg-primary);
+}
+
+.brand-logo {
+    height: 1.65rem;
+    width: auto;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.brand-wordmark {
+    fill: var(--fg-primary);
 }
 
 .brand-mark {

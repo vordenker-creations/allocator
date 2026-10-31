@@ -17,11 +17,32 @@ use VKU\Allocator\Service\AuthService;
 use VKU\Allocator\Service\ProvisioningService;
 use VKU\Allocator\Service\ProxmoxLifecycleService;
 use VKU\Allocator\Service\ProxmoxTelemetryService;
+use VKU\Allocator\Service\I18n;
 use VKU\Allocator\Service\SshKeyValidator;
 use VKU\Allocator\Service\StagingTrayService;
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
+}
+
+$currentLang = I18n::resolve(
+    isset($_GET['lang']) && is_string($_GET['lang']) ? $_GET['lang'] : null,
+    isset($_COOKIE['vku_lang']) && is_string($_COOKIE['vku_lang']) ? $_COOKIE['vku_lang'] : (isset($_COOKIE['lang']) && is_string($_COOKIE['lang']) ? $_COOKIE['lang'] : null),
+    isset($_SESSION['lang']) && is_string($_SESSION['lang']) ? $_SESSION['lang'] : null
+);
+
+if (isset($_GET['lang']) && is_string($_GET['lang']) && in_array($currentLang, I18n::SUPPORTED_LANGUAGES, true)) {
+    $_SESSION['lang'] = $currentLang;
+    setcookie('vku_lang', $currentLang, [
+        'expires' => time() + 31536000,
+        'path' => '/',
+        'samesite' => 'Lax',
+    ]);
+    setcookie('lang', $currentLang, [
+        'expires' => time() + 31536000,
+        'path' => '/',
+        'samesite' => 'Lax',
+    ]);
 }
 
 $pdo = Database::getConnection();
@@ -113,6 +134,48 @@ match ([$method, $route]) {
         $authService->logout();
         setFlash('info', 'Session terminated.');
         redirect('/');
+    })(),
+
+    // -------------------------------------------------------------------------
+    // Language Preference Toggle Endpoint
+    // -------------------------------------------------------------------------
+    ['GET', '/lang'], ['POST', '/lang'], ['GET', '/set-lang'], ['POST', '/set-lang'], ['GET', '/locale'], ['POST', '/locale'] => (function () use ($currentLang): void {
+        $rawTarget = is_string($_POST['lang'] ?? null) ? $_POST['lang'] : (is_string($_GET['lang'] ?? null) ? $_GET['lang'] : '');
+        $targetLang = strtolower(trim($rawTarget));
+        if (!in_array($targetLang, I18n::SUPPORTED_LANGUAGES, true)) {
+            $targetLang = $currentLang === I18n::LANG_VI ? I18n::LANG_EN : I18n::LANG_VI;
+        }
+
+        $_SESSION['lang'] = $targetLang;
+        setcookie('vku_lang', $targetLang, [
+            'expires' => time() + 31536000,
+            'path' => '/',
+            'samesite' => 'Lax',
+        ]);
+        setcookie('lang', $targetLang, [
+            'expires' => time() + 31536000,
+            'path' => '/',
+            'samesite' => 'Lax',
+        ]);
+
+        if (str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') || ($_GET['format'] ?? '') === 'json') {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['ok' => true, 'lang' => $targetLang]);
+            return;
+        }
+
+        $rawReturn = (string) ($_POST['return_to'] ?? $_GET['return_to'] ?? '');
+        $returnTo = I18n::sanitizeReturnTo(
+            $rawReturn,
+            $_SERVER['HTTP_HOST'] ?? null,
+            $_SERVER['HTTP_REFERER'] ?? null
+        );
+        $returnTo = str_replace(["\r", "\n", "\0"], '', $returnTo);
+        $isSafe = str_starts_with($returnTo, '/') && !str_starts_with($returnTo, '//') && !str_starts_with($returnTo, '/\\');
+        if (!$isSafe) {
+            $returnTo = '/';
+        }
+        redirect($returnTo);
     })(),
 
     // -------------------------------------------------------------------------
