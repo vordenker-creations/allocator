@@ -411,6 +411,7 @@ match ([$method, $route]) {
         $allocationRepo,
         $trayService,
         $lifecycleService,
+        $activeSystemLeaseCount,
         $currentLang
     ): void {
         if ($currentUser === null) {
@@ -420,6 +421,11 @@ match ([$method, $route]) {
 
         $leases = $allocationRepo->findLeasesByUser((int) $currentUser['id']);
         $hydratedTray = $trayService->getHydratedTray();
+
+        // Calculate live active/scheduled count directly from the fresh query so it's always accurate
+        $activeSystemLeaseCount = count(array_filter($leases, function (array $l): bool {
+            return in_array((string) ($l['lease_status'] ?? ''), ['ACTIVE', 'SCHEDULED'], true);
+        }));
 
         // Self-healing check: if user has an ACTIVE lease on vor-server, ensure CT 200 is powered on
         foreach ($leases as $l) {
@@ -508,6 +514,7 @@ match ([$method, $route]) {
         $userRepo,
         $allocationRepo,
         $trayService,
+        $activeSystemLeaseCount,
         $currentLang
     ): void {
         if ($currentUser === null || $currentUserRole !== UserRole::Admin) {

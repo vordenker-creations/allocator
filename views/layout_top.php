@@ -21,7 +21,11 @@ $currentLang = $currentLang ?? I18n::resolve(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($pageTitle ?? ($currentLang === 'vi' ? 'VKU Allocator — Điều phối tài nguyên' : 'VKU Allocator')) ?></title>
-    <link rel="stylesheet" href="/assets/style.css">
+<?php
+$cssFile = dirname(__DIR__) . '/public/assets/style.css';
+$cssVersion = file_exists($cssFile) ? (string) filemtime($cssFile) : '2.1';
+?>
+    <link rel="stylesheet" href="/assets/style.css?v=<?= e($cssVersion) ?>">
     <script>
         (function () {
             const saved = localStorage.getItem('vku_allocator_theme');
