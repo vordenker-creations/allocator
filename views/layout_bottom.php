@@ -14,7 +14,10 @@ $copiedText = I18n::get('copied_btn', $currentLang);
 </main>
 
 <footer class="footer">
-    <?= e(I18n::format('footer_text', $currentLang, [$phpVer])) ?>
+    <div class="footer-inner">
+        <span><?= e(I18n::get('brand_sub', $currentLang)) ?></span>
+        <span><?= e(I18n::format('footer_text', $currentLang, [$phpVer])) ?></span>
+    </div>
 </footer>
 
 <script>

@@ -56,9 +56,9 @@ require __DIR__ . '/layout_top.php';
                                 <span class="badge badge-<?= strtolower($st) ?>"><span class="status-dot"></span><?= e(I18n::translateStatus($st, $currentLang)) ?></span>
                             </td>
                             <td>
-                                <form method="POST" action="/admin/node/status" style="display:flex;gap:0.35rem;">
+                                <form method="POST" action="/admin/node/status" style="display:flex;gap:6px;align-items:center;">
                                     <input type="hidden" name="node_id" value="<?= $nid ?>">
-                                    <select name="status" class="form-control" style="padding:0.28rem 0.45rem;font-size:0.76rem;width:130px;">
+                                    <select name="status" class="form-control form-control-sm" style="width:136px;">
                                         <?php foreach (['ONLINE', 'MAINTENANCE', 'OFFLINE'] as $opt): ?>
                                             <option value="<?= $opt ?>" <?= $st === $opt ? 'selected' : '' ?>><?= e(I18n::translateStatus($opt, $currentLang)) ?></option>
                                         <?php endforeach; ?>
@@ -79,7 +79,7 @@ require __DIR__ . '/layout_top.php';
                 <span><?= e(I18n::get('admin_sec2_title', $currentLang)) ?></span>
             </div>
             <form method="POST" action="/admin/user/topup">
-                <div class="form-group" style="margin-bottom:0.85rem;">
+                <div class="form-group" style="margin-bottom:12px;">
                     <label class="form-label" for="user_id"><?= e(I18n::get('admin_select_user', $currentLang)) ?></label>
                     <select id="user_id" name="user_id" class="form-control" required>
                         <?php foreach ($users as $u): ?>
@@ -90,7 +90,7 @@ require __DIR__ . '/layout_top.php';
                     </select>
                 </div>
 
-                <div class="form-group" style="margin-bottom:0.85rem;">
+                <div class="form-group" style="margin-bottom:16px;">
                     <label class="form-label" for="amount"><?= e(I18n::get('admin_credit_delta', $currentLang)) ?></label>
                     <input
                         type="number"
@@ -112,7 +112,7 @@ require __DIR__ . '/layout_top.php';
                 <span><?= e(I18n::get('admin_sec3_title', $currentLang)) ?></span>
             </div>
             <form method="POST" action="/admin/node/create">
-                <div class="form-group" style="margin-bottom:0.75rem;">
+                <div class="form-group" style="margin-bottom:12px;">
                     <label class="form-label" for="new_tier_id"><?= e(I18n::get('filter_resource_tier', $currentLang)) ?></label>
                     <select id="new_tier_id" name="tier_id" class="form-control" required>
                         <?php foreach ($tiers as $t): ?>
@@ -123,7 +123,7 @@ require __DIR__ . '/layout_top.php';
                     </select>
                 </div>
 
-                <div class="filter-grid" style="margin-bottom:0.75rem;">
+                <div class="filter-grid" style="margin-bottom:12px;">
                     <div class="form-group">
                         <label class="form-label" for="hostname"><?= e(I18n::get('admin_hostname_label', $currentLang)) ?></label>
                         <input type="text" id="hostname" name="hostname" class="form-control" placeholder="vku-h100-01" required>
@@ -134,12 +134,12 @@ require __DIR__ . '/layout_top.php';
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom:0.75rem;">
+                <div class="form-group" style="margin-bottom:12px;">
                     <label class="form-label" for="gpu_model"><?= e(I18n::get('admin_gpu_label', $currentLang)) ?></label>
                     <input type="text" id="gpu_model" name="gpu_model" class="form-control" placeholder="NVIDIA H100 PCIe 80GB">
                 </div>
 
-                <div class="filter-grid" style="margin-bottom:0.9rem;">
+                <div class="filter-grid" style="margin-bottom:16px;">
                     <div class="form-group">
                         <label class="form-label" for="vram_gb"><?= e(I18n::get('admin_vram_label', $currentLang)) ?></label>
                         <input type="number" id="vram_gb" name="vram_gb" class="form-control" value="80" min="0" required>

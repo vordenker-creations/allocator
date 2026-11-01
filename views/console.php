@@ -41,11 +41,11 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
     </div>
 
     <?php if ($activeLeases === []): ?>
-        <p class="mono" style="color:var(--fg-secondary);padding:1rem 0;">
+        <p class="mono" style="color:var(--fg-secondary);padding:12px 0;">
             <?= e(I18n::get('console_empty_prefix', $currentLang)) ?> <a href="/"><?= e(I18n::get('nav_node_matrix', $currentLang)) ?></a> <?= e(I18n::get('console_empty_suffix', $currentLang)) ?>
         </p>
     <?php else: ?>
-        <div style="display:flex;flex-direction:column;gap:1.25rem;">
+        <div style="display:flex;flex-direction:column;gap:16px;">
             <?php foreach ($activeLeases as $lease): ?>
                 <?php
                 $leaseId = (int) $lease['lease_id'];
@@ -71,21 +71,21 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                 );
                 $confirmMsg = I18n::format('console_terminate_confirm', $currentLang, [$leaseId, (string) $lease['hostname'], number_format($estimatedRefund, 2)]);
                 ?>
-                <div class="node-card" style="background-color:var(--bg-primary);border-color:var(--border-strong);">
+                <div class="node-card node-card-active">
                     <div class="node-card-top">
-                        <div>
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                             <span class="badge <?= $status === 'ACTIVE' ? 'badge-active' : 'badge-scheduled' ?>">
                                 <span class="status-dot"></span><?= e(I18n::translateStatus($status, $currentLang)) ?>
                             </span>
-                            <span class="mono" style="font-weight:700;font-size:1.05rem;margin-left:0.5rem;">
+                            <span class="mono" style="font-weight:600;font-size:15px;">
                                 <?= e($lease['hostname']) ?>
                             </span>
-                            <span class="mono" style="color:var(--fg-muted);font-size:0.82rem;margin-left:0.4rem;">
+                            <span class="mono" style="color:var(--fg-muted);font-size:12.5px;">
                                 [<?= e(I18n::get('console_job_prefix', $currentLang)) ?> #<?= (int) $lease['allocation_id'] ?>: <?= e($lease['project_name']) ?>]
                             </span>
                         </div>
                         <div class="mono" style="text-align:right;">
-                            <div style="font-size:0.74rem;color:var(--fg-muted);">
+                            <div style="font-size:0.70rem;letter-spacing:0.05em;text-transform:uppercase;color:var(--fg-muted);">
                                 <?= e($status === 'ACTIVE' ? I18n::get('console_rem_window', $currentLang) : I18n::get('console_starts_in_label', $currentLang)) ?>
                             </div>
                             <div
@@ -93,7 +93,7 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                                 data-start-ts="<?= $startDt->getTimestamp() ?>"
                                 data-end-ts="<?= $endDt->getTimestamp() ?>"
                                 data-status="<?= e($status) ?>"
-                                style="font-size:1rem;font-weight:700;"
+                                style="font-size:15px;font-weight:600;"
                             >
                                 <?= e(I18n::get('console_calculating', $currentLang)) ?>
                             </div>
@@ -115,7 +115,7 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                         </button>
                     </div>
 
-                    <div class="spec-list" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));">
+                    <div class="spec-list" style="margin-top:0;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));">
                         <div class="spec-item">
                             <span><?= e(I18n::get('console_spec_image', $currentLang)) ?></span>
                             <strong><?= e($lease['docker_image']) ?></strong>
@@ -135,8 +135,8 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                     </div>
 
                     <?php if (!empty($lease['startup_script'])): ?>
-                        <div class="mono" style="font-size:0.78rem;background:var(--bg-elevated);padding:0.6rem 0.8rem;border:1px solid var(--border-color);">
-                            <span style="color:var(--fg-muted);display:block;margin-bottom:0.2rem;"><?= e(I18n::get('console_startup_script', $currentLang)) ?></span>
+                        <div class="mono" style="font-size:12.5px;background:var(--bg-elevated);padding:10px 14px;border:1px solid var(--border-subtle);border-radius:var(--radius-md);">
+                            <span style="color:var(--fg-muted);display:block;margin-bottom:4px;font-size:0.70rem;text-transform:uppercase;letter-spacing:0.05em;"><?= e(I18n::get('console_startup_script', $currentLang)) ?></span>
                             <pre style="white-space:pre-wrap;"><?= e($lease['startup_script']) ?></pre>
                         </div>
                     <?php endif; ?>
@@ -148,14 +148,14 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                         $terminalFrameId = 'web-terminal-frame-' . $leaseId;
                         $terminalWrapId = 'web-terminal-wrap-' . $leaseId;
                         ?>
-                        <div style="margin-top:0.5rem;border:1px solid var(--border-strong);background:var(--bg-elevated);padding:0.75rem 0.9rem;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-                                <div class="mono" style="font-size:0.8rem;">
-                                    <span class="status-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--status-online-fg);margin-right:0.4rem;"></span>
+                        <div class="shell-drawer">
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                                <div class="mono" style="font-size:12.5px;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                    <span class="status-dot" style="background-color:#10B981;"></span>
                                     <strong><?= e(I18n::get('console_shell_title', $currentLang)) ?></strong>
-                                    <span style="color:var(--fg-muted);margin-left:0.35rem;"><?= e(I18n::get('console_shell_sub', $currentLang)) ?></span>
+                                    <span style="color:var(--fg-muted);"><?= e(I18n::get('console_shell_sub', $currentLang)) ?></span>
                                 </div>
-                                <div style="display:flex;gap:0.5rem;">
+                                <div style="display:flex;gap:8px;">
                                     <button
                                         type="button"
                                         class="btn btn-sm"
@@ -173,7 +173,7 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                                     </a>
                                 </div>
                             </div>
-                            <div id="<?= e($terminalWrapId) ?>" style="display:none;margin-top:0.75rem;border:1px solid var(--border-strong);background:#141413;">
+                            <div id="<?= e($terminalWrapId) ?>" class="shell-frame-wrap" style="display:none;">
                                 <iframe
                                     id="<?= e($terminalFrameId) ?>"
                                     src="about:blank"
@@ -186,7 +186,7 @@ $studentHandle = strtolower((string) ($currentUser['student_code'] ?? 'student')
                     <?php endif; ?>
 
                     <div class="node-card-footer">
-                        <div class="mono" style="font-size:0.8rem;">
+                        <div class="mono" style="font-size:12.5px;">
                             <?= e(I18n::get('console_locked_rate', $currentLang)) ?> <strong><?= number_format($rate, 2) ?> CR/h</strong> &bull;
                             <?= e(I18n::get('console_early_refund', $currentLang)) ?>
                             <strong style="color:var(--status-online-fg);">

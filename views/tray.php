@@ -22,10 +22,10 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
             <?= e(I18n::get('tray_subtitle', $currentLang)) ?>
         </p>
     </div>
-    <div style="display:flex;gap:0.5rem;">
+    <div style="display:flex;gap:8px;">
         <a href="/" class="btn btn-outline"><?= e(I18n::get('tray_add_more', $currentLang)) ?></a>
         <?php if ($hydratedTray['node_count'] > 0): ?>
-            <form method="POST" action="/tray/clear" style="display:inline;">
+            <form method="POST" action="/tray/clear" style="display:inline-flex;">
                 <button type="submit" class="btn btn-outline"><?= e(I18n::get('tray_clear', $currentLang)) ?></button>
             </form>
         <?php endif; ?>
@@ -33,9 +33,9 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
 </div>
 
 <?php if ($hydratedTray['node_count'] === 0): ?>
-    <section class="panel" style="text-align:center;padding:3rem 1.5rem;">
-        <h2 class="mono" style="margin-bottom:0.65rem;"><?= e(I18n::get('tray_empty_title', $currentLang)) ?></h2>
-        <p style="color:var(--fg-secondary);margin-bottom:1.25rem;">
+    <section class="panel" style="text-align:center;padding:48px 24px;">
+        <h2 class="mono" style="font-size:16px;font-weight:600;margin-bottom:8px;"><?= e(I18n::get('tray_empty_title', $currentLang)) ?></h2>
+        <p style="color:var(--fg-secondary);margin-bottom:20px;">
             <?= e(I18n::get('tray_empty_desc', $currentLang)) ?>
         </p>
         <a href="/" class="btn"><?= e(I18n::get('tray_browse_btn', $currentLang)) ?></a>
@@ -49,7 +49,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                         <span><?= e(I18n::format('tray_sec1_title', $currentLang, [(int) $hydratedTray['node_count'], $maxNodesPerJob, I18n::translateRole($effectiveRole->value, $currentLang)])) ?></span>
                     </div>
 
-                    <div class="table-wrap" style="margin-bottom:1rem;">
+                    <div class="table-wrap" style="margin-bottom:12px;">
                         <table>
                             <thead>
                                 <tr>
@@ -68,7 +68,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                                     <tr>
                                         <td class="mono">
                                             <strong><?= e($item['hostname']) ?></strong><br>
-                                            <span style="font-size:0.75rem;color:var(--fg-muted);">
+                                            <span style="font-size:0.74rem;color:var(--fg-muted);">
                                                 <?= e($item['gpu_model'] ?? I18n::format('tray_core_cpu', $currentLang, [(int) $item['cpu_cores']])) ?>
                                             </span>
                                         </td>
@@ -83,19 +83,19 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                                             <input
                                                 type="number"
                                                 name="node_hours[<?= $nid ?>]"
-                                                class="form-control node-hours-input"
+                                                class="form-control form-control-sm node-hours-input"
                                                 data-rate="<?= (float) $item['credits_per_hour'] ?>"
                                                 data-node-id="<?= $nid ?>"
                                                 min="1"
                                                 max="<?= (int) $item['max_allocation_hours'] ?>"
                                                 value="<?= (int) $item['hours'] ?>"
-                                                style="width:76px;"
+                                                style="width:72px;"
                                             >
                                         </td>
                                         <td class="mono" style="font-size:0.78rem;">
                                             <?= e($item['end_time']->format('m-d H:i')) ?>
                                         </td>
-                                        <td class="mono" style="font-weight:700;" id="subtotal-<?= $nid ?>">
+                                        <td class="mono" style="font-weight:600;" id="subtotal-<?= $nid ?>">
                                             <?= number_format((float) $item['line_cost'], 2) ?> CR
                                         </td>
                                         <td>
@@ -126,7 +126,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                         <span><?= e(I18n::get('tray_sec2_title', $currentLang)) ?></span>
                     </div>
 
-                    <div class="filter-grid" style="margin-bottom:1rem;">
+                    <div class="filter-grid" style="margin-bottom:16px;">
                         <div class="form-group">
                             <label class="form-label" for="project_name"><?= e(I18n::get('tray_project_label', $currentLang)) ?></label>
                             <input
@@ -156,7 +156,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                         </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom:1rem;">
+                    <div class="form-group" style="margin-bottom:16px;">
                         <label class="form-label" for="docker_image"><?= e(I18n::get('tray_preset_label', $currentLang)) ?></label>
                         <select id="docker_image" name="docker_image" class="form-control">
                             <?php foreach ($presets as $preset): ?>
@@ -170,7 +170,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                         </select>
                     </div>
 
-                    <div class="form-group" style="margin-bottom:1rem;">
+                    <div class="form-group" style="margin-bottom:16px;">
                         <label class="form-label" for="startup_script"><?= e(I18n::get('tray_script_label', $currentLang)) ?></label>
                         <textarea
                             id="startup_script"
@@ -234,7 +234,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                     <span><?= e(I18n::get('tray_sum_burn', $currentLang)) ?></span>
                     <span id="grand-total-credits"><?= number_format($totalCost, 2) ?> CR</span>
                 </div>
-                <div class="summary-row" style="border-top:1px solid var(--border-color);margin-top:0.5rem;">
+                <div class="summary-row" style="border-top:1px solid var(--border-color);margin-top:8px;">
                     <span><?= e(I18n::get('tray_sum_projected', $currentLang)) ?></span>
                     <strong style="color:<?= $remainingBalance < 0 ? 'var(--status-maint-fg)' : 'var(--status-online-fg)' ?>;">
                         <?= number_format($remainingBalance, 2) ?> CR
@@ -242,7 +242,7 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                 </div>
 
                 <?php if ($maxConcurrentLeases !== null && $activeSystemLeaseCount >= $maxConcurrentLeases): ?>
-                    <div class="flash flash-error" style="margin-top:1rem;margin-bottom:0;">
+                    <div class="flash flash-error" style="margin-top:16px;margin-bottom:0;">
                         <span>
                             <?= e(I18n::format('tray_hoarding_warn', $currentLang, [I18n::translateRole($effectiveRole->value, $currentLang), (int) $activeSystemLeaseCount])) ?>
                         </span>
@@ -252,8 +252,8 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                 <button
                     type="submit"
                     form="job-spec-form"
-                    class="btn"
-                    style="width:100%;margin-top:1.25rem;padding:0.8rem;"
+                    class="btn btn-lg"
+                    style="width:100%;margin-top:16px;"
                     <?= ($remainingBalance < 0 || ($maxConcurrentLeases !== null && $activeSystemLeaseCount >= $maxConcurrentLeases)) ? 'disabled' : '' ?>
                 >
                     <?= e(I18n::get('tray_provision_btn', $currentLang)) ?>
@@ -263,15 +263,15 @@ $userSshKey = (string) ($currentUser['ssh_public_key'] ?? '');
                     <span><?= e(I18n::get('tray_sum_burn', $currentLang)) ?></span>
                     <span id="grand-total-credits"><?= number_format($totalCost, 2) ?> CR</span>
                 </div>
-                <p style="font-size:0.84rem;color:var(--fg-secondary);margin:1rem 0;">
+                <p style="font-size:13px;color:var(--fg-secondary);margin:16px 0;">
                     <?= e(I18n::get('tray_auth_required', $currentLang)) ?>
                 </p>
-                <a href="/login" class="btn" style="width:100%;padding:0.8rem;">
+                <a href="/login" class="btn btn-lg" style="width:100%;">
                     <?= e(I18n::get('tray_signin_btn', $currentLang)) ?>
                 </a>
             <?php endif; ?>
 
-            <div class="mono" style="margin-top:1.25rem;font-size:0.74rem;color:var(--fg-muted);line-height:1.5;">
+            <div class="mono" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);font-size:0.74rem;color:var(--fg-muted);line-height:1.55;">
                 <strong><?= e(I18n::get('tray_acid_title', $currentLang)) ?></strong><br>
                 <?= I18n::get('tray_acid_1', $currentLang) ?><br>
                 <?= I18n::get('tray_acid_2', $currentLang) ?><br>
