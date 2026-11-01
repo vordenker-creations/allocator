@@ -404,16 +404,8 @@ code, pre, .mono {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     margin-bottom: 16px;
-    box-shadow: var(--shadow-sm), var(--inset-highlight);
+    box-shadow: var(--shadow-sm);
     overflow: hidden;
-}
-
-.pve-banner.pve-live {
-    border-top: 2px solid #10B981;
-}
-
-.pve-banner.pve-simulated {
-    border-top: 2px solid #F59E0B;
 }
 
 .pve-banner-header {
@@ -624,7 +616,7 @@ textarea.form-control {
     cursor: pointer;
     text-decoration: none;
     white-space: nowrap;
-    box-shadow: var(--inset-highlight);
+    box-shadow: var(--shadow-sm);
     transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out), color 140ms var(--ease-out), opacity 140ms var(--ease-out), transform 100ms var(--ease-out);
 }
 
@@ -1189,4 +1181,10 @@ th {
     align-items: center;
     flex-wrap: wrap;
     gap: 8px 16px;
+}
+
+.footer-attribution {
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
 }

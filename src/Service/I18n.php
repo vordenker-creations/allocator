@@ -32,7 +32,8 @@ final class I18n
             'lang_toggle_title' => 'Chuyển sang Tiếng Việt',
             'brand_sub' => 'HPC & Hardware Lease Scheduler',
             'theme_toggle_title' => 'Toggle Warm White / Soft Black Theme',
-            'footer_text' => 'VKU’s Allocator — Vietnam-Korea University of Information and Communication Technology • PHP %s + MySQL 8.4 (3NF ACID Scheduler)',
+            'footer_text' => 'VKU’s Allocator — Vietnam-Korea University of Information and Communication Technology',
+            'footer_attribution' => 'A CREATION OF VORDENKER.WORK',
             'copied_btn' => 'Copied!',
 
             // Page Titles
@@ -44,7 +45,7 @@ final class I18n
             'page_title_404' => '404 Not Found — VKU Allocator',
 
             // Common Status & Role Badges
-            'status_online_free' => 'ONLINE // FREE',
+            'status_online_free' => 'AVAILABLE',
             'status_busy_window' => 'BUSY IN WINDOW',
             'status_online' => 'ONLINE',
             'status_maintenance' => 'MAINTENANCE',
@@ -77,7 +78,7 @@ final class I18n
             'policy_guest_signin' => 'Sign in',
             'policy_guest_suffix' => 'for Researcher/Admin quotas',
             'pve_banner_title' => 'PROXMOX VE HYPERVISOR TELEMETRY',
-            'pve_live_badge' => 'LIVE PVE API',
+            'pve_live_badge' => 'LIVE TELEMETRY',
             'pve_sim_badge' => 'TELEMETRY: SIMULATED (CONFIGURE .ENV FOR LIVE PVE API)',
             'pve_host_label' => 'Host:',
             'pve_node_label' => 'Node:',
@@ -313,7 +314,8 @@ final class I18n
             'lang_toggle_title' => 'Switch to English',
             'brand_sub' => 'Hệ thống điều phối thuê phần cứng & HPC',
             'theme_toggle_title' => 'Chuyển đổi giao diện Sáng / Tối',
-            'footer_text' => 'VKU’s Allocator — Trường Đại học Công nghệ Thông tin và Truyền thông Việt - Hàn • PHP %s + MySQL 8.4 (Bộ lập lịch 3NF ACID)',
+            'footer_text' => 'VKU’s Allocator — Trường Đại học Công nghệ Thông tin và Truyền thông Việt - Hàn',
+            'footer_attribution' => 'A CREATION OF VORDENKER.WORK',
             'copied_btn' => 'Đã sao chép!',
 
             // Page Titles
@@ -325,7 +327,7 @@ final class I18n
             'page_title_404' => '404 Không tìm thấy trang — VKU Allocator',
 
             // Common Status & Role Badges
-            'status_online_free' => 'TRỰC TUYẾN // TRỐNG',
+            'status_online_free' => 'KHẢ DỤNG',
             'status_busy_window' => 'ĐÃ ĐẶT TRONG KHUNG GIỜ',
             'status_online' => 'TRỰC TUYẾN',
             'status_maintenance' => 'BẢO TRÌ',
@@ -358,7 +360,7 @@ final class I18n
             'policy_guest_signin' => 'Đăng nhập',
             'policy_guest_suffix' => 'để sử dụng hạn mức Nghiên cứu viên / Quản trị',
             'pve_banner_title' => 'THÔNG SỐ TRỰC TIẾP HYPERVISOR PROXMOX VE',
-            'pve_live_badge' => 'API PVE TRỰC TIẾP',
+            'pve_live_badge' => 'DỮ LIỆU TRỰC TIẾP',
             'pve_sim_badge' => 'THÔNG SỐ: MÔ PHỎNG (CẤU HÌNH .ENV ĐỂ KẾT NỐI PVE API THỰC)',
             'pve_host_label' => 'Máy chủ:',
             'pve_node_label' => 'Nút:',
@@ -640,6 +642,7 @@ final class I18n
     public static function translateStatus(string $status, ?string $lang = null): string
     {
         $map = [
+            'AVAILABLE' => 'status_online_free',
             'ONLINE // FREE' => 'status_online_free',
             'BUSY IN WINDOW' => 'status_busy_window',
             'ONLINE' => 'status_online',

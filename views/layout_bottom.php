@@ -8,15 +8,14 @@ $currentLang = $currentLang ?? I18n::resolve(
     isset($_COOKIE['vku_lang']) && is_string($_COOKIE['vku_lang']) ? $_COOKIE['vku_lang'] : (isset($_COOKIE['lang']) && is_string($_COOKIE['lang']) ? $_COOKIE['lang'] : null),
     isset($_SESSION['lang']) && is_string($_SESSION['lang']) ? $_SESSION['lang'] : null
 );
-$phpVer = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
 $copiedText = I18n::get('copied_btn', $currentLang);
 ?>
 </main>
 
 <footer class="footer">
     <div class="footer-inner">
-        <span><?= e(I18n::get('brand_sub', $currentLang)) ?></span>
-        <span><?= e(I18n::format('footer_text', $currentLang, [$phpVer])) ?></span>
+        <span class="footer-institution"><?= e(I18n::get('footer_text', $currentLang)) ?></span>
+        <span class="footer-attribution"><?= e(I18n::get('footer_attribution', $currentLang)) ?></span>
     </div>
 </footer>
 

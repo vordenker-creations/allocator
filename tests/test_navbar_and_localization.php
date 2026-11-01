@@ -295,7 +295,11 @@ assertCheck($enLabels['nav_theme'] === 'Theme', 'EN mapping: Theme');
 assertCheck($viLabels['nav_theme'] === 'Giao diện', 'VI mapping: Giao diện');
 
 assertCheck(count($enLabels) === count($viLabels) && count($enLabels) > 120, 'Full application dictionary has parity between EN and VI (> 120 keys)');
-assertCheck(I18n::translateStatus('ONLINE // FREE', 'vi') === 'TRỰC TUYẾN // TRỐNG', 'VI status translation: ONLINE // FREE');
+assertCheck(I18n::translateStatus('AVAILABLE', 'vi') === 'KHẢ DỤNG', 'VI status translation: AVAILABLE');
+assertCheck(I18n::translateStatus('AVAILABLE', 'en') === 'AVAILABLE', 'EN status translation: AVAILABLE');
+assertCheck(I18n::translateStatus('ONLINE // FREE', 'vi') === 'KHẢ DỤNG', 'VI status translation (legacy backward compat): ONLINE // FREE');
+assertCheck(I18n::translateTelemetrySource('LIVE PVE API', 'en') === 'LIVE TELEMETRY', 'EN telemetry source badge: LIVE TELEMETRY');
+assertCheck(I18n::translateTelemetrySource('LIVE PVE API', 'vi') === 'DỮ LIỆU TRỰC TIẾP', 'VI telemetry source badge: DỮ LIỆU TRỰC TIẾP');
 assertCheck(I18n::translateRole('STUDENT', 'vi') === 'SINH VIÊN', 'VI role translation: STUDENT');
 assertCheck(I18n::translateTierName('CUDA_COMPUTE', 'CUDA Compute Nodes', 'vi') === 'Cụm Node Tính Toán CUDA', 'VI tier name translation: CUDA_COMPUTE');
 
