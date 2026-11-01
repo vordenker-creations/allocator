@@ -256,6 +256,8 @@ final class I18n
             'login_id_placeholder' => '22IT001 or an.nv.22it@vku.udn.vn',
             'login_pw_label' => 'Password',
             'login_submit_btn' => 'Authenticate →',
+            'login_or_divider' => 'OR',
+            'login_google_btn' => 'Continue with Google',
             'login_demo_title' => 'Quick-Fill Demo Accounts (Viva / Grading)',
             'login_demo_hint' => 'Click any role below to auto-fill credentials (Password:',
             'login_demo_student_name' => '22IT001 (Nguyen Van An)',
@@ -299,6 +301,10 @@ final class I18n
             'flash_topup_err' => 'Credit adjustment failed: ',
             'err_404_heading' => '404 — Route Not Found',
             'err_404_back' => 'Return to VKU Node Matrix',
+            'flash_google_unconfigured' => 'Google OAuth is not configured in this environment. Please sign in with your VKU credentials or use the Demo Quick-Fill accounts below.',
+            'flash_google_cancelled' => 'Google sign-in was cancelled.',
+            'flash_google_state_invalid' => 'Google OAuth session state expired or did not match. Please try signing in again.',
+            'flash_auth_google_success' => 'Signed in via Google as %s (%s).',
         ],
         self::LANG_VI => [
             // Navbar & Layout
@@ -538,6 +544,8 @@ final class I18n
             'login_id_placeholder' => '22IT001 hoặc an.nv.22it@vku.udn.vn',
             'login_pw_label' => 'Mật khẩu',
             'login_submit_btn' => 'Xác thực đăng nhập →',
+            'login_or_divider' => 'HOẶC',
+            'login_google_btn' => 'Tiếp tục với Google',
             'login_demo_title' => 'Tài khoản Demo điền nhanh (Bảo vệ / Chấm điểm)',
             'login_demo_hint' => 'Nhấn vào bất kỳ vai trò nào bên dưới để tự động điền thông tin (Mật khẩu:',
             'login_demo_student_name' => '22IT001 (Nguyễn Văn An)',
@@ -581,6 +589,10 @@ final class I18n
             'flash_topup_err' => 'Điều chỉnh tín chỉ thất bại: ',
             'err_404_heading' => '404 — Không tìm thấy đường dẫn',
             'err_404_back' => 'Quay lại Ma trận Node VKU',
+            'flash_google_unconfigured' => 'Google OAuth chưa được cấu hình trên môi trường này. Vui lòng đăng nhập bằng tài khoản VKU hoặc dùng tài khoản Demo bên dưới.',
+            'flash_google_cancelled' => 'Đã hủy đăng nhập qua Google.',
+            'flash_google_state_invalid' => 'Phiên xác thực Google đã hết hạn hoặc không khớp. Vui lòng thử lại.',
+            'flash_auth_google_success' => 'Đã đăng nhập qua Google với mã %s (%s).',
         ],
     ];
 

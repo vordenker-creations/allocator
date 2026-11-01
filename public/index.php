@@ -14,6 +14,7 @@ use VKU\Allocator\Repository\AllocationRepository;
 use VKU\Allocator\Repository\NodeRepository;
 use VKU\Allocator\Repository\UserRepository;
 use VKU\Allocator\Service\AuthService;
+use VKU\Allocator\Service\GoogleOAuthService;
 use VKU\Allocator\Service\ProvisioningService;
 use VKU\Allocator\Service\ProxmoxLifecycleService;
 use VKU\Allocator\Service\ProxmoxTelemetryService;
@@ -52,6 +53,7 @@ $lifecycleService = new ProxmoxLifecycleService();
 $allocationRepo = new AllocationRepository($pdo, $lifecycleService);
 
 $authService = new AuthService($userRepo);
+$googleOAuthService = new GoogleOAuthService();
 $trayService = new StagingTrayService($nodeRepo);
 $provisioningService = new ProvisioningService($pdo, $nodeRepo, $userRepo, $allocationRepo, $lifecycleService);
 
@@ -104,13 +106,14 @@ match ([$method, $route]) {
     // -------------------------------------------------------------------------
     // Authentication Routes
     // -------------------------------------------------------------------------
-    ['GET', '/login'] => (function () use ($currentUser, $trayService, $currentLang): void {
+    ['GET', '/login'] => (function () use ($currentUser, $trayService, $googleOAuthService, $currentLang): void {
         if ($currentUser !== null) {
             redirect('/');
         }
         $pageTitle = I18n::get('page_title_login', $currentLang);
         $activeNav = 'login';
         $hydratedTray = $trayService->getHydratedTray();
+        $googleOAuthEnabled = $googleOAuthService->isConfigured();
         require dirname(__DIR__) . '/views/login.php';
     })(),
 
@@ -129,6 +132,81 @@ match ([$method, $route]) {
         $user = $result['user'];
         setFlash('success', I18n::format('flash_auth_success', $currentLang, [(string) $user['student_code'], I18n::translateRole((string) $user['role'], $currentLang)]));
         redirect(str_starts_with($returnTo, '/') ? $returnTo : '/');
+    })(),
+
+    ['GET', '/auth/google'] => (function () use ($currentUser, $googleOAuthService, $currentLang): void {
+        if ($currentUser !== null) {
+            redirect('/');
+        }
+        if (!$googleOAuthService->isConfigured()) {
+            setFlash('info', I18n::get('flash_google_unconfigured', $currentLang));
+            redirect('/login');
+        }
+
+        $rawReturn = (string) ($_GET['return_to'] ?? '/tray');
+        $safeReturn = I18n::sanitizeReturnTo($rawReturn, $_SERVER['HTTP_HOST'] ?? null, $_SERVER['HTTP_REFERER'] ?? null);
+        $_SESSION['oauth_return_to'] = $safeReturn;
+
+        $state = bin2hex(random_bytes(16));
+        $_SESSION['oauth_google_state'] = $state;
+
+        redirect($googleOAuthService->createAuthorizationUrl($state));
+    })(),
+
+    ['GET', '/auth/google/callback'] => (function () use ($authService, $googleOAuthService, $currentLang): void {
+        if (!$googleOAuthService->isConfigured()) {
+            setFlash('info', I18n::get('flash_google_unconfigured', $currentLang));
+            redirect('/login');
+        }
+
+        if (isset($_GET['error'])) {
+            setFlash('info', I18n::get('flash_google_cancelled', $currentLang));
+            redirect('/login');
+        }
+
+        $expectedState = (string) ($_SESSION['oauth_google_state'] ?? '');
+        $receivedState = (string) ($_GET['state'] ?? '');
+        unset($_SESSION['oauth_google_state']);
+
+        if ($expectedState === '' || $receivedState === '' || !hash_equals($expectedState, $receivedState)) {
+            setFlash('error', I18n::get('flash_google_state_invalid', $currentLang));
+            redirect('/login');
+        }
+
+        $code = (string) ($_GET['code'] ?? '');
+        $oauthResult = $googleOAuthService->authenticateCode($code);
+        if (!$oauthResult['ok']) {
+            $err = isset($oauthResult['error']) ? I18n::translateServiceMessage((string) $oauthResult['error'], $currentLang) : I18n::get('flash_auth_failed', $currentLang);
+            setFlash('error', $err);
+            redirect('/login');
+        }
+
+        $loginResult = $authService->loginWithGoogle(
+            email: (string) $oauthResult['email'],
+            fullName: (string) ($oauthResult['name'] ?? '')
+        );
+
+        if (!$loginResult['ok'] || !isset($loginResult['user'])) {
+            setFlash('error', I18n::get('flash_auth_failed', $currentLang));
+            redirect('/login');
+        }
+
+        $user = $loginResult['user'];
+        $returnTo = (string) ($_SESSION['oauth_return_to'] ?? '/tray');
+        unset($_SESSION['oauth_return_to']);
+
+        setFlash(
+            'success',
+            I18n::format(
+                'flash_auth_google_success',
+                $currentLang,
+                [
+                    (string) $user['student_code'],
+                    I18n::translateRole((string) $user['role'], $currentLang),
+                ]
+            )
+        );
+        redirect(str_starts_with($returnTo, '/') && !str_starts_with($returnTo, '//') ? $returnTo : '/');
     })(),
 
     ['POST', '/logout'] => (function () use ($authService, $currentLang): void {

@@ -73,4 +73,32 @@ final readonly class AuthService
         }
         return UserRole::tryFrom((string) $user['role']);
     }
+
+    /**
+     * Logs in or auto-provisions a user authenticated via Google OAuth 2.0 / OIDC.
+     *
+     * @return array{ok: bool, user?: array<string, mixed>, created?: bool, error?: string}
+     */
+    public function loginWithGoogle(string $email, string $fullName): array
+    {
+        $cleanEmail = strtolower(trim($email));
+        if ($cleanEmail === '' || !filter_var($cleanEmail, FILTER_VALIDATE_EMAIL)) {
+            return ['ok' => false, 'error' => 'Invalid email returned from Google OAuth.'];
+        }
+
+        $provisioned = $this->userRepository->findOrCreateOAuthUser($cleanEmail, $fullName);
+        $user = $provisioned['user'];
+
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
+
+        $_SESSION['auth_user_id'] = (int) $user['id'];
+
+        return [
+            'ok' => true,
+            'user' => $user,
+            'created' => $provisioned['created'],
+        ];
+    }
 }

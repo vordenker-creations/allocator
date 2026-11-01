@@ -39,7 +39,7 @@ $cssVersion = file_exists($cssFile) ? (string) filemtime($cssFile) : '2.1';
 <header class="topbar">
     <div class="topbar-inner">
         <a href="/" class="brand" aria-label="Allocator">
-            <svg class="brand-logo" width="120" height="24" viewBox="0 0 646 129" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Allocator">
+            <svg class="brand-logo" width="171" height="34" viewBox="0 0 646 129" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Allocator">
                 <title>Allocator</title>
                 <rect width="72" height="129" fill="#E21A1B"/>
                 <rect x="93" width="72" height="129" fill="#FFC400"/>
