@@ -32,24 +32,24 @@ class ProxmoxLifecycleService
     ) {
         $resolvedHost = ($host !== null && $host !== '')
             ? $host
-            : (string) ($_ENV['PROXMOX_HOST'] ?? getenv('PROXMOX_HOST') ?: 'https://192.168.1.200:8006');
+            : ($httpExecutor === null ? (string) ($_ENV['PROXMOX_HOST'] ?? getenv('PROXMOX_HOST') ?: 'https://192.168.1.200:8006') : 'https://192.168.1.200:8006');
         $this->host = rtrim($resolvedHost, '/');
 
         $this->node = ($node !== null && $node !== '')
             ? $node
-            : (string) ($_ENV['PROXMOX_NODE'] ?? getenv('PROXMOX_NODE') ?: 'vor-server');
+            : ($httpExecutor === null ? (string) ($_ENV['PROXMOX_NODE'] ?? getenv('PROXMOX_NODE') ?: 'vor-server') : 'vor-server');
 
         $this->tokenId = $tokenId !== null
             ? $tokenId
-            : (string) ($_ENV['PROXMOX_TOKEN_ID'] ?? getenv('PROXMOX_TOKEN_ID') ?: '');
+            : ($httpExecutor === null ? (string) ($_ENV['PROXMOX_TOKEN_ID'] ?? getenv('PROXMOX_TOKEN_ID') ?: '') : '');
 
         $this->tokenSecret = $tokenSecret !== null
             ? $tokenSecret
-            : (string) ($_ENV['PROXMOX_TOKEN_SECRET'] ?? getenv('PROXMOX_TOKEN_SECRET') ?: '');
+            : ($httpExecutor === null ? (string) ($_ENV['PROXMOX_TOKEN_SECRET'] ?? getenv('PROXMOX_TOKEN_SECRET') ?: '') : '');
 
         $rawLeaseVmid = $leaseVmid !== null
             ? $leaseVmid
-            : ($_ENV['PROXMOX_LEASE_VMID'] ?? getenv('PROXMOX_LEASE_VMID') ?: null);
+            : ($httpExecutor === null ? ($_ENV['PROXMOX_LEASE_VMID'] ?? getenv('PROXMOX_LEASE_VMID') ?: null) : null);
         if ($rawLeaseVmid !== null && is_numeric($rawLeaseVmid) && (int) $rawLeaseVmid > 0) {
             $this->leaseVmid = (int) $rawLeaseVmid;
         } else {
@@ -58,13 +58,13 @@ class ProxmoxLifecycleService
 
         $rawGuestType = ($guestType !== null && $guestType !== '')
             ? $guestType
-            : (string) ($_ENV['PROXMOX_LEASE_GUEST_TYPE'] ?? getenv('PROXMOX_LEASE_GUEST_TYPE') ?: ($_ENV['PROXMOX_GUEST_TYPE'] ?? getenv('PROXMOX_GUEST_TYPE') ?: 'qemu'));
+            : ($httpExecutor === null ? (string) ($_ENV['PROXMOX_LEASE_GUEST_TYPE'] ?? getenv('PROXMOX_LEASE_GUEST_TYPE') ?: ($_ENV['PROXMOX_GUEST_TYPE'] ?? getenv('PROXMOX_GUEST_TYPE') ?: 'qemu')) : 'qemu');
         $cleanGuestType = strtolower(trim($rawGuestType));
         $this->guestType = in_array($cleanGuestType, ['qemu', 'lxc'], true) ? $cleanGuestType : 'qemu';
 
         $rawHostVmid = $hostVmid !== null
             ? $hostVmid
-            : ($_ENV['PROXMOX_HOST_VMID'] ?? getenv('PROXMOX_HOST_VMID') ?: null);
+            : ($httpExecutor === null ? ($_ENV['PROXMOX_HOST_VMID'] ?? getenv('PROXMOX_HOST_VMID') ?: null) : null);
         if ($rawHostVmid !== null && is_numeric($rawHostVmid) && (int) $rawHostVmid > 0) {
             $this->hostVmid = (int) $rawHostVmid;
         } else {

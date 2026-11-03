@@ -208,7 +208,12 @@ final class GoogleOAuthService
         $email = strtolower(trim((string) $claims['email']));
         $emailDomain = str_contains($email, '@') ? explode('@', $email)[1] : '';
 
-        if ($this->allowedDomain !== '' && strcasecmp($emailDomain, $this->allowedDomain) !== 0) {
+        // Check if email is an authorized administrator override
+        $adminCsv = (string) ($_ENV['GOOGLE_ADMIN_EMAILS'] ?? getenv('GOOGLE_ADMIN_EMAILS') ?: '');
+        $adminList = array_filter(array_map(static fn(string $s): string => strtolower(trim($s)), explode(',', $adminCsv)));
+        $isAdmin = in_array($email, $adminList, true);
+
+        if (!$isAdmin && $this->allowedDomain !== '' && strcasecmp($emailDomain, $this->allowedDomain) !== 0) {
             return [
                 'ok' => false,
                 'error' => sprintf('Access restricted to @%s Google Workspace accounts (signed in as %s).', $this->allowedDomain, $email),
